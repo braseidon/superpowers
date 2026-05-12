@@ -62,7 +62,7 @@ This fork integrates Claude Code-native features into the Superpowers workflow.
 /plugin marketplace add braseidon/superpowers
 
 # Install plugin
-/plugin install superpowers-extended-cc@superpowers-extended-cc-marketplace
+/plugin install superpowers@superpowers-marketplace
 ```
 
 ### Option 2: Direct URL
@@ -81,9 +81,9 @@ Check that commands appear:
 
 ```
 # Should see:
-# /superpowers-extended-cc:brainstorming - Interactive design refinement
-# /superpowers-extended-cc:writing-plans - Create implementation plan
-# /superpowers-extended-cc:executing-plans - Execute plan in batches
+# /superpowers:brainstorming - Interactive design refinement
+# /superpowers:writing-plans - Create implementation plan
+# /superpowers:executing-plans - Execute plan in batches
 ```
 
 ## The Basic Workflow
@@ -215,7 +215,7 @@ Opt in via `.claude/settings.local.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/plugins/marketplaces/superpowers-extended-cc-marketplace/hooks/examples/pre-commit-check-tasks.sh"
+            "command": "bash ~/.claude/plugins/marketplaces/superpowers-marketplace/hooks/examples/pre-commit-check-tasks.sh"
           }
         ]
       }
@@ -241,7 +241,7 @@ Opt in via `.claude/settings.local.json`:
         "hooks": [
           {
             "type": "command",
-            "command": "bash ~/.claude/plugins/marketplaces/superpowers-extended-cc-marketplace/hooks/examples/stop-deflection-guard.sh"
+            "command": "bash ~/.claude/plugins/marketplaces/superpowers-marketplace/hooks/examples/stop-deflection-guard.sh"
           }
         ]
       }
@@ -257,7 +257,7 @@ See the header of `hooks/examples/stop-deflection-guard.sh` for the full list of
 Skills update automatically when you update the plugin:
 
 ```bash
-/plugin update superpowers-extended-cc@superpowers-extended-cc-marketplace
+/plugin update superpowers@superpowers-marketplace
 ```
 
 ## Upstream Compatibility
