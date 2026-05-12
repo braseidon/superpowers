@@ -9,13 +9,13 @@
   },
   "contributors": [
     {
-      "name": "pcvelz",
-      "url": "https://github.com/pcvelz",
+      "name": "braseidon",
+      "url": "https://github.com/braseidon",
       "role": "Fork maintainer"
     }
   ],
-  "homepage": "https://github.com/pcvelz/superpowers",
-  "repository": "https://github.com/pcvelz/superpowers",
+  "homepage": "https://github.com/braseidon/superpowers",
+  "repository": "https://github.com/braseidon/superpowers",
   "license": "MIT",
   "keywords": ["skills", "tdd", "debugging", "collaboration", "best-practices", "workflows", "claude-code", "native-tasks"],
   "skills": "./skills/",
