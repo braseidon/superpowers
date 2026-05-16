@@ -144,6 +144,7 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - "Similar to Task N" (repeat the code — the engineer may be reading tasks out of order)
 - Steps that describe what to do without showing how (code blocks required for code steps)
 - References to types, functions, or methods not defined in any task
+- **Project-specific identifiers without provenance** — DB column names, API field names, library function names, schema keys, config flags, domain-specific IDs. If you cannot show a verification command (grep/jq/sql/etc.) above the identifier that produced it, the identifier is a placeholder. Replace with "verify during implementation" and add a Task 0 recon step. **This is where most hallucinations land in plans.**
 
 ## Remember
 - Exact file paths always
