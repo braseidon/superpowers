@@ -12,7 +12,7 @@ Skills use Claude Code tool names. When you encounter these in a skill, use your
 | `Glob` (search files by name) | `glob` |
 | `Skill` tool (invoke a skill) | `skill` |
 | `WebFetch` | `web_fetch` |
-| `Task` tool (dispatch subagent) | `task` (see [Agent types](#agent-types)) |
+| `Task` tool (dispatch subagent) | `task` with `agent_type: "general-purpose"` or `"explore"` |
 | Multiple `Task` calls (parallel) | Multiple `task` calls |
 | Task status/output | `read_agent`, `list_agents` |
 | `TodoWrite` (task tracking) | `sql` with built-in `todos` table |
@@ -28,6 +28,7 @@ Copilot CLI's `task` tool accepts an `agent_type` parameter:
 | `general-purpose` | `"general-purpose"` |
 | `Explore` | `"explore"` |
 | Named plugin agents (e.g. `superpowers:code-reviewer`) | Discovered automatically from installed plugins |
+
 
 ## Async shell sessions
 
