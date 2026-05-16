@@ -1,6 +1,6 @@
 {
-  "name": "superpowers-marketplace",
-  "description": "Marketplace for Superpowers Extended CC - Claude Code-specific enhancements",
+  "name": "braseidon-superpowers",
+  "description": "Braseidon's local fork of Superpowers (Claude Code edition)",
   "owner": {
     "name": "braseidon",
     "email": "braseidon@users.noreply.github.com"
