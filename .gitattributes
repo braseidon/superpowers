@@ -16,3 +16,32 @@ hooks/session-start text eol=lf
 *.png binary
 *.jpg binary
 *.gif binary
+
+# Fork rename overrides — always keep our version on upstream merges.
+# These files are 100% pcvelz->braseidon / plugin-name renames; auto-merge
+# would just regenerate the same conflicts every sync.
+# Requires: `git config merge.ours.driver true` (set per-clone).
+# Watch-out: if upstream adds a new structural field to one of these files,
+# `merge=ours` silently drops it. Periodically check with:
+#   git diff upstream/main -- .claude-plugin/marketplace.json [etc]
+.claude-plugin/marketplace.json merge=ours
+.claude-plugin/plugin.json merge=ours
+.github/FUNDING.yml merge=ours
+hooks/session-start merge=ours
+
+# Non-Claude AI tooling — always take upstream on merges.
+# We don't use Cursor, Codex, Gemini, Copilot, or OpenCode, so any local
+# divergence here is just noise that triggers daily merge conflicts.
+# Requires: `git config merge.theirs.driver "cp -f -- %B %A"` (set per-clone).
+.cursor-plugin/** merge=theirs
+.codex-plugin/** merge=theirs
+.opencode/** merge=theirs
+GEMINI.md merge=theirs
+gemini-extension.json merge=theirs
+hooks/hooks-cursor.json merge=theirs
+scripts/sync-to-codex-plugin.sh merge=theirs
+tests/codex-plugin-sync/** merge=theirs
+skills/using-superpowers/references/codex-tools.md merge=theirs
+skills/using-superpowers/references/copilot-tools.md merge=theirs
+skills/using-superpowers/references/gemini-tools.md merge=theirs
+docs/README.opencode.md merge=theirs
