@@ -170,8 +170,7 @@ trace "$TASK_ID" "block" "subagent-return-missing-axes count=$MISSING_COUNT"
     echo "     transparently, not as a bypass."
     echo
     echo "Do NOT proceed to absorb this report and close the task on partial"
-    echo "evidence. post-task-complete-revalidate will catch it at close time,"
-    echo "but a re-dispatch now is cheaper than a reopen later."
+    echo "evidence. A re-dispatch now is cheaper than a reopen later."
     echo
     echo "(Runtime disable: SUPERPOWERS_AGENT_RETURN_GUARD=0. Trace: $TRACE_LOG)"
 } >&2
