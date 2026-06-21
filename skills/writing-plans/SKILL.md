@@ -79,8 +79,17 @@ Key principle: TDD cycles happen WITHIN tasks, not as separate tasks. A task is 
 
 **Tech Stack:** [Key technologies/libraries]
 
+**User decisions (already made):** [One line per decision the user made during brainstorming/planning, quotable. "none" if none.]
+
 ---
 ```
+
+### Deferred decisions
+
+If the plan schedules questions for the user (a DECIDE list, an AskUserQuestion step), each question MUST:
+- Cite why it is still open despite the header decisions. If a recorded decision answers it, answer from the record — do not re-ask.
+- Carry the facts needed to answer it in the option descriptions: name the artifact AND its role/state (e.g. "stale GitHub mirror, last push 2026-03-25 — separate from your local-tools dev home"), and state what does NOT change under each option.
+- Recommend nothing that contradicts a recorded decision. That is a plan failure (same severity as No Placeholders).
 
 ## Task Structure
 
@@ -234,7 +243,7 @@ TaskCreate:
     [Key actions from task's Steps — abbreviated]
 
     ```json:metadata
-    {"files": ["path/to/file1.py"], "verifyCommand": "pytest tests/path/ -v", "acceptanceCriteria": ["criterion 1", "criterion 2"]}
+    {"files": ["path/to/file1.py"], "verifyCommand": "pytest tests/path/ -v", "acceptanceCriteria": ["criterion 1", "criterion 2"], "modelTier": "mechanical"}
     ```
   activeForm: "Implementing [Component Name]"
 ```
@@ -288,14 +297,14 @@ If the plan is saved to `docs/superpowers/plans/2026-01-15-feature.md`, the task
       "id": 0,
       "subject": "Task 0: ...",
       "status": "pending",
-      "description": "**Goal:** ...\n\n**Files:**\n...\n\n```json:metadata\n{\"files\": [\"path/to/file.py\"], \"verifyCommand\": \"pytest tests/ -v\", \"acceptanceCriteria\": [\"criterion 1\"]}\n```"
+      "description": "**Goal:** ...\n\n**Files:**\n...\n\n```json:metadata\n{\"files\": [\"path/to/file.py\"], \"verifyCommand\": \"pytest tests/ -v\", \"acceptanceCriteria\": [\"criterion 1\"], \"modelTier\": \"mechanical\"}\n```"
     },
     {
       "id": 1,
       "subject": "Task 1: ...",
       "status": "pending",
       "blockedBy": [0],
-      "description": "**Goal:** ...\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"\", \"acceptanceCriteria\": []}\n```"
+      "description": "**Goal:** ...\n\n```json:metadata\n{\"files\": [], \"verifyCommand\": \"\", \"acceptanceCriteria\": [], \"modelTier\": \"standard\"}\n```"
     }
   ],
   "lastUpdated": "<timestamp>"
