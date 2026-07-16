@@ -1,5 +1,14 @@
 # Superpowers — Contributor Guidelines
 
+## Fork Notes (braseidon) — read first
+
+This is braseidon's **Claude Code-only** fork. `origin` = braseidon/superpowers, `upstream` = pcvelz/superpowers (itself a CC fork of obra/superpowers). Everything below this section is upstream's contributor doc — it applies only when PRing upstream.
+
+- **Upstream sync: `scripts/sync-upstream.sh` ONLY — never manual `git merge upstream/main`.** The script re-deletes purged non-Claude files, auto-resolves those conflicts, and prints a drift diff for `merge=ours`-pinned files (version bumps there drop silently — port by hand; check `.claude-plugin/*.json` versions).
+- **Deliberate fork deltas — do not "fix" back to upstream:** namespace `superpowers-extended-cc:` → `superpowers:`, `TodoWrite` → `TaskCreate`, plugin/marketplace renamed to braseidon, all non-Claude AI tooling (Cursor/Codex/Gemini/Copilot/OpenCode) deleted, `using-superpowers` trimmed to Claude-only.
+- **New unwanted upstream file?** Add it to the `PURGE` list in `scripts/sync-upstream.sh`, don't just delete it — a bare delete resurrects or conflicts on the next sync.
+- **Merge drivers are per-clone config:** `git config merge.ours.driver true` (see `.gitattributes`). Fresh clones must re-set it.
+
 ## If You Are an AI Agent
 
 Stop. Read this section before doing anything.
