@@ -45,7 +45,6 @@ OURS_PINNED=(
   .claude-plugin/plugin.json
   .github/FUNDING.yml
   .version-bump.json
-  hooks/session-start
 )
 
 git fetch upstream

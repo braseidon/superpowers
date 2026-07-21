@@ -16,7 +16,11 @@
 .claude-plugin/plugin.json merge=ours
 .github/FUNDING.yml merge=ours
 .version-bump.json merge=ours
-hooks/session-start merge=ours
+
+# NOT pinned on purpose: hooks/session-start. Its only fork delta is the
+# namespace in one string, but the pin silently held back a Windows iconv fix
+# for weeks. Let it conflict every sync — a one-line conflict is cheap, a
+# swallowed upstream fix is not.
 
 # Non-Claude AI tooling (Cursor, Codex, Gemini, Copilot, OpenCode) is DELETED
 # from this fork — Claude Code only. gitattributes can't enforce deletions
