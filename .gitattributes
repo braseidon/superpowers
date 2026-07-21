@@ -15,6 +15,7 @@
 .claude-plugin/marketplace.json merge=ours
 .claude-plugin/plugin.json merge=ours
 .github/FUNDING.yml merge=ours
+.version-bump.json merge=ours
 hooks/session-start merge=ours
 
 # Non-Claude AI tooling (Cursor, Codex, Gemini, Copilot, OpenCode) is DELETED

@@ -81,9 +81,29 @@ AskUserQuestion:
         description: "Highest capability and price. Only useful as a cap if your session model is above it."
   ```
 
-- **No** → write nothing.
+- **No** (to the top-level routing question) → write nothing.
 
-After writing the file, tell the user: the plugin's routing gates activate immediately (they check for this file on every relevant tool call), and from the next session on a routing notice is injected at session start. No restart, no settings edits, no hook registration needed. Off-switch: delete the file.
+- **Thinking-effort follow-up** (ask whenever a routing file is about to be written — execution guidance exists either way; this question is the user's control point over it):
+
+  ```yaml
+  AskUserQuestion:
+    question: "Routed dispatches also get a recommended thinking effort per tier. Who controls it?"
+    header: "Effort"
+    multiSelect: false
+    options:
+      - label: "Automatic (Recommended)"
+        description: "Write no effort keys. The session notice carries the recommended map (mechanical=low, standard=medium, frontier=inherit) as an implicit default and the dispatching model applies it autonomously."
+      - label: "Pin the recommended map"
+        description: "Write the map into the file explicitly. Same values, but labeled user-set in the notice, and yours to edit later."
+      - label: "Set my own per-tier values"
+        description: "Choose an effort (low/medium/high/inherit) per tier; your values are written and labeled user-set."
+  ```
+
+  - **Automatic** → write the tier mapping only; no effort keys.
+  - **Pin the recommended map** → add `"effort": {"mechanical": "low", "standard": "medium", "frontier": "inherit"}` to the same write.
+  - **Set my own** → ask one compact follow-up (`AskUserQuestion`, one question per tier or a single multi-part question) for the three tiers, then write the chosen values as the `"effort"` map. Warn inline if a mid-tier model is set above medium (costs frontier-class money for lower fidelity).
+
+After writing the file, tell the user: the plugin's routing gates activate immediately (they check for this file on every relevant tool call), and from the next session on a routing notice is injected at session start. No restart, no settings edits, no hook registration needed. Off-switch: delete the file. Also note: the notice includes a recommended per-tier thinking-effort map (implicit default; an `"effort"` key in the file overrides it). Effort is advisory only — no gate enforces it (the Agent tool has no effort parameter to check) — the session-start notice is the entire delivery mechanism.
 
 ## Feature 2: User-Thrown Gate Enforcement Hooks
 

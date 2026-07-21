@@ -15,23 +15,36 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 PURGE=(
+  .agents
   .codex-plugin
   .cursor-plugin
+  .kimi-plugin
   .opencode
+  .pi
   GEMINI.md
+  docs/README.kimi.md
   docs/README.opencode.md
+  docs/porting-to-a-new-harness.md
   gemini-extension.json
   hooks/hooks-cursor.json
   package.json
+  scripts/package-codex-plugin.sh
   scripts/sync-to-codex-plugin.sh
+  skills/using-superpowers/references/antigravity-tools.md
+  skills/using-superpowers/references/pi-tools.md
+  tests/antigravity
+  tests/codex
   tests/codex-plugin-sync
+  tests/kimi
   tests/opencode
+  tests/pi
 )
 
 OURS_PINNED=(
   .claude-plugin/marketplace.json
   .claude-plugin/plugin.json
   .github/FUNDING.yml
+  .version-bump.json
   hooks/session-start
 )
 
