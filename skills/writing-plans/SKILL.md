@@ -81,6 +81,13 @@ Key principle: TDD cycles happen WITHIN tasks, not as separate tasks. A task is 
 
 **User decisions (already made):** [One line per decision the user made during brainstorming/planning, quotable. "none" if none.]
 
+## Review checkpoints
+
+[Every task must appear in exactly one checkpoint. Default is batched review — 1:1 is the exception, reserved for risky boundaries (adapter/cache/matching/data). One line per checkpoint: name, task numbers, one-clause why.]
+
+- Adapters (Tasks 6+7) - matching/scaling is the risk surface, and cross-adapter parity can only be checked once both legs exist
+- Mechanical batch (Tasks 5, 9, 10, 11, 13) - one pass before final regression
+
 ---
 ```
 
@@ -170,6 +177,8 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 **2. Placeholder scan:** Search your plan for red flags — any of the patterns from the "No Placeholders" section above. Fix them.
 
 **3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
+
+**4. Review checkpoints:** Confirm the `## Review checkpoints` section exists and every task is accounted for in exactly one checkpoint.
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
