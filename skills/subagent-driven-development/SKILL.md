@@ -41,6 +41,8 @@ digraph when_to_use {
 
 ## The Process
 
+**Review checkpoints override this per-task loop.** If the project's CLAUDE.md or the plan declares review checkpoints, those govern: batched review across grouped tasks is correct and is not "skipping reviews." Every task still gets reviewed — checkpoints decide when and how grouped. The Red Flags below about never skipping reviews mean never leave a task unreviewed, not never batch.
+
 ```dot
 digraph process {
     rankdir=TB;
@@ -261,6 +263,8 @@ Done!
 - Let implementer self-review replace actual review (both are needed)
 - **Start code quality review before spec compliance is ✅** (wrong order)
 - Move to next task while either review has open issues
+
+**Qualifier:** the "skip reviews" / "move to next task" flags above assume no declared review checkpoints. If checkpoints exist (CLAUDE.md or the plan), batching to the checkpoint is not a violation — see the note under The Process.
 
 **If subagent asks questions:**
 - Answer clearly and completely
