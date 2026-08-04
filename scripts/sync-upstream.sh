@@ -9,10 +9,13 @@
 #     version, so upstream structural changes (e.g. version bumps, new fields)
 #     are dropped; the report at the end surfaces any drift to review.
 #
-# Usage: scripts/sync-upstream.sh   (runnable from anywhere — anchors on its
+# Usage: scripts/sync-upstream.sh [ref]   (default upstream/main; pass a tag
+# like v6.3.2 to sync to a release. Runnable from anywhere — anchors on its
 # own location, not cwd)
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
+
+REF="${1:-upstream/main}"
 
 PURGE=(
   .agents
@@ -49,7 +52,7 @@ OURS_PINNED=(
 
 git fetch upstream
 
-if git merge upstream/main --no-edit; then
+if git merge "$REF" --no-edit; then
   # Clean merge — but upstream may have added new files under purged paths.
   git rm -r -f -q --ignore-unmatch -- "${PURGE[@]}"
   if ! git diff --cached --quiet; then
@@ -69,7 +72,7 @@ fi
 
 echo ""
 echo "== merge=ours drift check (expected: name/author/repo rename only) =="
-git --no-pager diff upstream/main -- "${OURS_PINNED[@]}"
+git --no-pager diff "$REF" -- "${OURS_PINNED[@]}"
 echo ""
 echo "Review the diff above: rename-only lines are fine; anything else"
 echo "(version bumps, new fields, hook logic) should be ported by hand."
