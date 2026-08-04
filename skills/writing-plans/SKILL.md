@@ -79,6 +79,8 @@ Key principle: TDD cycles happen WITHIN tasks, not as separate tasks. A task is 
 
 **Tech Stack:** [Key technologies/libraries]
 
+**Global Constraints:** [Binding requirements every task must respect — exact values, formats, cross-component relationships ("same layout as X", "matches Y"). Execution controllers hand these to every reviewer. "none" if none.]
+
 **User decisions (already made):** [One line per decision the user made during brainstorming/planning, quotable. "none" if none.]
 
 ## Review checkpoints
@@ -161,12 +163,6 @@ Every step must contain the actual content an engineer needs. These are **plan f
 - Steps that describe what to do without showing how (code blocks required for code steps)
 - References to types, functions, or methods not defined in any task
 - **Project-specific identifiers without provenance** — DB column names, API field names, library function names, schema keys, config flags, domain-specific IDs. If you cannot show a verification command (grep/jq/sql/etc.) above the identifier that produced it, the identifier is a placeholder. Replace with "verify during implementation" and add a Task 0 recon step. **This is where most hallucinations land in plans.**
-
-## Remember
-- Exact file paths always
-- Complete code in every step — if a step changes code, show the code
-- Exact commands with expected output
-- DRY, YAGNI, TDD, frequent commits
 
 ## Self-Review
 

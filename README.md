@@ -199,9 +199,9 @@ This flow addresses a cost problem that frontier-priced models (Opus, Fable) mad
 
 **The whole flow is opt-in, with a single switch: `docs/superpowers/model-routing.json` in your project.** The enforcement gates ship with the plugin but are dormant — without that file every check no-ops and behavior is byte-identical to vanilla. No settings to edit, no hooks to register.
 
-### How it works — four harness-enforced layers
+### How it works — four hook-enforced layers
 
-Skills prose is not enforcement; agents skip instructions under load. So every layer here is executed by the harness, not volunteered by the model:
+Skills prose is not enforcement; agents skip instructions under load. So every layer here is executed by Claude Code's hook system, not volunteered by the model:
 
 | Layer | When | What it does |
 |-------|------|--------------|
@@ -269,7 +269,7 @@ Setup notes:
 - Prefer a guided setup? Run `/superpowers:onboard` — it covers this feature alongside the other optional flows.
 - Valid values are `"per-task"` (the default) and `"at-end"`; anything else falls back to per-task.
 - **User-level default:** the file may instead live at `~/.claude/superpowers/workflow.json`, applying to every project that has no project-level file. Lookup is project first, then user — the first file found wins entirely (no merging). A project file of `{"commitStrategy": "per-task"}` restores per-task commits for that project while a user-level default exists.
-- Unlike model routing, this flow has no enforcement gates — the session-start notice is the only delivery mechanism, so it takes effect from the next session on and relies on plan-time compliance (see the design doc for this boundary).
+- The plan-time side is enforced: a TaskCreate gate blocks plan tasks that carry per-task commit steps while `at-end` is configured (fail-open, kill switch `SUPERPOWERS_WORKFLOW_GUARD=0`). Dispatch-time stays advisory, and the notice takes effect from the next session on (see the design doc for this boundary).
 - Undo: delete the file or remove the `commitStrategy` key — per-task commits resume at the next session start.
 
 ---
