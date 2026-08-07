@@ -22,6 +22,21 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 **Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
 - (User preferences for plan location override this default)
 
+## Model Fit
+
+Plan writing is decomposition from a locked spec — Opus-tier work. Spec-stage judgment (brainstorming) belongs to the top model; if the session model is above Opus tier (Fable), the coordinator dispatches this skill to an Opus subagent rather than running it inline.
+
+**Running as a subagent for a higher-tier coordinator:** write the plan through Self-Review, save the plan + `.tasks.json`, and return the plan path. Do NOT run the Execution Handoff — subagents cannot AskUserQuestion. The coordinator adjudicates `[FABLE-ADJUDICATE]` markers and runs the handoff itself.
+
+## Escalation Boundaries
+
+Read the spec's `## Plan-stage escalation` section before decomposing. For each listed boundary:
+
+- **Spec already decided it** → cite that decision in the touching task and follow it.
+- **Still open** → the touching task states the question and carries a `[FABLE-ADJUDICATE]` marker. Resolving a listed boundary with plan-writer judgment is a plan failure (same severity as No Placeholders) — flag, don't decide.
+
+No such section in the spec → add `**Escalation:** spec predates escalation marking` to the plan header and proceed.
+
 ## Scope Check
 
 If the spec covers multiple independent subsystems, it should have been broken into sub-project specs during brainstorming. If it wasn't, suggest breaking this into separate plans — one per subsystem. Each plan should produce working, testable software on its own.
@@ -176,6 +191,10 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 **4. Review checkpoints:** Confirm the `## Review checkpoints` section exists and every task is accounted for in exactly one checkpoint.
 
+**5. Escalation coverage:** Every boundary in the spec's `## Plan-stage escalation` section is either covered by a cited spec decision or carries a `[FABLE-ADJUDICATE]` marker. A listed boundary the plan silently decided is a plan failure — restore the flag.
+
+**6. Execution recommendation:** Confirm the plan ends with an **Execution recommendation** line: subagent-driven vs parallel-session, recommended orchestrator model (Fable for judgment-dense coordination, Opus otherwise), one clause why.
+
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
 ## Execution Handoff
@@ -184,7 +203,9 @@ If you find issues, fix them inline. No need to re-review — just fix and move 
 STOP. You are about to complete the plan. DO NOT call EnterPlanMode or ExitPlanMode. You MUST call AskUserQuestion below. Both are FORBIDDEN — EnterPlanMode traps the session, ExitPlanMode skips the user's execution choice.
 </HARD-GATE>
 
-Your ONLY permitted next action is calling `AskUserQuestion` with this EXACT structure:
+A plan enters execution with zero unresolved `[FABLE-ADJUDICATE]` markers — the top-tier coordinator adjudicates each one (or surfaces it to the user) before the execution question. If you are that coordinator, do it now; if markers remain and you cannot adjudicate them, surface them in the question below instead of proceeding silently.
+
+Your ONLY permitted next action is calling `AskUserQuestion` with this EXACT structure — mark the option matching the plan's Execution recommendation "(Recommended)":
 
 ```yaml
 AskUserQuestion:

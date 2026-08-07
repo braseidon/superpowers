@@ -15,6 +15,10 @@ Do NOT invoke any implementation skill, write any code, scaffold any project, or
 
 **You MUST NOT call `EnterPlanMode` or `ExitPlanMode` during this skill.** This skill operates in normal mode. Plan mode restricts Write/Edit tools and has no clean exit. Use the writing-plans skill for structured planning instead.
 
+## Model Fit
+
+Spec writing is where irreversible design judgment concentrates — run this skill on the most capable model available (Fable-tier). Plan writing that follows is decomposition work (Opus-tier). The spec's `## Plan-stage escalation` section (see Spec Self-Review) is how spec-stage judgment reaches the plan stage without re-running it.
+
 ## Anti-Pattern: "This Is Too Simple To Need A Design"
 
 Every project goes through this process. A todo list, a single-function utility, a config change — all of them. "Simple" projects are where unexamined assumptions cause the most wasted work. The design can be short (a few sentences for truly simple projects), but you MUST present it and get approval.
@@ -118,6 +122,7 @@ After writing the spec document, look at it with fresh eyes:
 2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
 3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
 4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
+5. **Plan-stage escalation:** End the spec with a `## Plan-stage escalation` section — the 0-3 boundaries where the derived plan needs top-model adjudication instead of plan-writer judgment (novel algorithm choice, irreversible schema/migration, cross-source data semantics, security boundaries). One line each: boundary + why decomposition can't settle it. Most specs get `none`. You made these calls implicitly while designing — write down which ones the plan writer must flag, not decide.
 
 Fix any issues inline. No need to re-review — just fix and move on.
 
@@ -132,6 +137,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 - Invoke the writing-plans skill to create a detailed implementation plan
 - Do NOT invoke any other skill. writing-plans is the next step.
+- If this session runs above Opus tier (Fable), do not write the plan inline: dispatch an Opus subagent that invokes superpowers:writing-plans with the spec path, saves the plan + `.tasks.json`, and returns the plan path WITHOUT running the Execution Handoff (subagents cannot AskUserQuestion). You then adjudicate any `[FABLE-ADJUDICATE]` markers and run the Execution Handoff yourself.
 
 ## Visual Companion
 
