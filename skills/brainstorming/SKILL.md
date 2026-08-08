@@ -137,7 +137,7 @@ Wait for the user's response. If they request changes, make them and re-run the 
 
 - Invoke the writing-plans skill to create a detailed implementation plan
 - Do NOT invoke any other skill. writing-plans is the next step.
-- If this session runs above Opus tier (Fable), do not write the plan inline: dispatch an Opus subagent that invokes superpowers:writing-plans with the spec path, saves the plan + `.tasks.json`, and returns the plan path WITHOUT running the Execution Handoff (subagents cannot AskUserQuestion). You then adjudicate any `[FABLE-ADJUDICATE]` markers and run the Execution Handoff yourself.
+- If this session runs above Opus tier (Fable), do not write the plan inline: dispatch an Opus subagent at maximum reasoning effort (effort-pinned agent type like `general-xhigh` if available) that invokes superpowers:writing-plans with the spec path, saves the plan + `.tasks.json`, and returns the plan path WITHOUT running the Execution Handoff (subagents cannot AskUserQuestion). You then adjudicate any `[FABLE-ADJUDICATE]` markers and run the Execution Handoff yourself.
 
 ## Visual Companion
 

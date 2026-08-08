@@ -26,7 +26,9 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 Plan writing is decomposition from a locked spec — Opus-tier work. Spec-stage judgment (brainstorming) belongs to the top model; if the session model is above Opus tier (Fable), the coordinator dispatches this skill to an Opus subagent rather than running it inline.
 
-**Running as a subagent for a higher-tier coordinator:** write the plan through Self-Review, save the plan + `.tasks.json`, and return the plan path. Do NOT run the Execution Handoff — subagents cannot AskUserQuestion. The coordinator adjudicates `[FABLE-ADJUDICATE]` markers and runs the handoff itself.
+Dispatched plan writers run at maximum reasoning effort — use an effort-pinned agent type if available (e.g. `general-xhigh`) with model Opus on the call. Work that earns a plan earns the effort.
+
+**Running as a subagent for a higher-tier coordinator:** write the plan through Self-Review, save the plan + `.tasks.json`, commit, and return the plan path. Do NOT run the Execution Handoff — subagents cannot AskUserQuestion. The coordinator adjudicates `[FABLE-ADJUDICATE]` markers and runs the handoff itself.
 
 ## Escalation Boundaries
 
@@ -189,13 +191,23 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 **3. Type consistency:** Do the types, method signatures, and property names you used in later tasks match what you defined in earlier tasks? A function called `clearLayers()` in Task 3 but `clearFullLayers()` in Task 7 is a bug.
 
-**4. Review checkpoints:** Confirm the `## Review checkpoints` section exists and every task is accounted for in exactly one checkpoint.
+**4. Dependency-order walk:** Walk tasks in order. Every symbol, type, file, or fixture a task consumes must exist by that point — created by an earlier task or verified pre-existing. A task consuming what a later task creates is a sequencing bug.
 
-**5. Escalation coverage:** Every boundary in the spec's `## Plan-stage escalation` section is either covered by a cited spec decision or carries a `[FABLE-ADJUDICATE]` marker. A listed boundary the plan silently decided is a plan failure — restore the flag.
+**5. Test-snippets-run-as-written:** Every test code block carries the setup it needs to actually run — imports, seeds, fixture loads, mocks. A snippet that assumes ambient setup described in another task's prose fails as written.
 
-**6. Execution recommendation:** Confirm the plan ends with an **Execution recommendation** line: subagent-driven vs parallel-session, recommended orchestrator model (Fable for judgment-dense coordination, Opus otherwise), one clause why.
+**6. Single-source mechanisms:** Each mechanism is specified in exactly one task; other tasks reference it by task number instead of restating it. Restated descriptions drift when fix rounds amend one copy and miss the other.
+
+**7. Review checkpoints:** Confirm the `## Review checkpoints` section exists and every task is accounted for in exactly one checkpoint.
+
+**8. Escalation coverage:** Every boundary in the spec's `## Plan-stage escalation` section is either covered by a cited spec decision or carries a `[FABLE-ADJUDICATE]` marker. A listed boundary the plan silently decided is a plan failure — restore the flag.
+
+**9. Execution recommendation:** Confirm the plan ends with an **Execution recommendation** line: subagent-driven vs parallel-session, recommended orchestrator model (Fable for judgment-dense coordination, Opus otherwise), one clause why.
 
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
+
+Checks 4-6 are mechanical — most independent-review blockers are this class, and every one caught here is a review round saved.
+
+After self-review passes, commit the plan + `.tasks.json`. Any independent review dispatch needs a committed doc — the commit sha is the review's delta base.
 
 ## Execution Handoff
 
