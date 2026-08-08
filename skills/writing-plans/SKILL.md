@@ -102,7 +102,7 @@ Key principle: TDD cycles happen WITHIN tasks, not as separate tasks. A task is 
 
 ## Review checkpoints
 
-[Every task must appear in exactly one checkpoint. Default is batched review — 1:1 is the exception, reserved for risky boundaries (adapter/cache/matching/data). One line per checkpoint: name, task numbers, one-clause why.]
+[Every task must appear in exactly one checkpoint. Default is batched review — 1:1 is the exception, and it must name what COMPOUNDS: downstream tasks consume this artifact's shape/semantics before any harness exists to catch a defect, or the task carries an adjudication gate. Risk CATEGORY alone ("it's matching/data work") never justifies 1:1 — on a plan whose whole subject is the risk surface that rule degenerates to per-task review and doubles wall time; local-blast-radius work (a test file's assertions, display flags, an isolated normalizer) batches even there, backed by the plan's own late-stage harness. Tasks whose risk is only jointly checkable (two legs of a parity) review together at the second leg, never separately. Review batching and model routing are independent axes — a batched task still routes its implementer by judgment density, not by batch membership. One line per checkpoint: name, task numbers, one-clause why (for 1:1s: what compounds).]
 
 - Adapters (Tasks 6+7) - matching/scaling is the risk surface, and cross-adapter parity can only be checked once both legs exist
 - Mechanical batch (Tasks 5, 9, 10, 11, 13) - one pass before final regression
@@ -197,7 +197,7 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 **6. Single-source mechanisms:** Each mechanism is specified in exactly one task; other tasks reference it by task number instead of restating it. Restated descriptions drift when fix rounds amend one copy and miss the other.
 
-**7. Review checkpoints:** Confirm the `## Review checkpoints` section exists and every task is accounted for in exactly one checkpoint.
+**7. Review checkpoints:** Confirm the `## Review checkpoints` section exists and every task is accounted for in exactly one checkpoint. Every 1:1 names what compounds (downstream consumer of the artifact, or an adjudication gate) — a 1:1 justified only by risk category is a checkpoint to merge.
 
 **8. Escalation coverage:** Every boundary in the spec's `## Plan-stage escalation` section is either covered by a cited spec decision or carries a `[FABLE-ADJUDICATE]` marker. A listed boundary the plan silently decided is a plan failure — restore the flag.
 

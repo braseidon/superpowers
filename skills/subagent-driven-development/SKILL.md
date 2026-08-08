@@ -191,6 +191,13 @@ When the task's plan text contains the complete code to write, the
 implementation is transcription plus testing: use the cheapest tier for
 that implementer. Single-file mechanical fixes also take the cheapest tier.
 
+**Effort floor when the harness pins reasoning effort** (effort-pinned agent
+types like `general-high`): cheap-tier models run high effort, always.
+Benched at medium effort, the cheap tier skipped investigation steps and
+conflated dispatch-prompt instructions with agent-definition instructions —
+dangerous, not just slow; high and xhigh were fine. Medium effort on the
+cheap tier is for trivial transcription with a small brief, nothing else.
+
 **Task complexity signals (implementation tasks):**
 - Touches 1-2 files with a complete spec → cheap model
 - Touches multiple files with integration concerns → standard model
