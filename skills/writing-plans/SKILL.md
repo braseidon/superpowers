@@ -24,11 +24,11 @@ Assume they are a skilled developer, but know almost nothing about our toolset o
 
 ## Model Fit
 
-Plan writing is decomposition from a locked spec — Opus-tier work. Spec-stage judgment (brainstorming) belongs to the top model; if the session model is above Opus tier (Fable), the coordinator dispatches this skill to an Opus subagent rather than running it inline.
+Plan writing is decomposition from a locked spec — Opus-tier work, written by a FRESH subagent whatever the session model. A fresh writer working from the spec alone is the test that the spec is sufficient input — execution agents get the same isolation later, so a wall the writer hits is a spec gap surfacing early, not friction to route around. In-session plan writing only on explicit user grant.
 
 Dispatched plan writers run at maximum reasoning effort — use an effort-pinned agent type if available (e.g. `general-xhigh`) with model Opus on the call. Work that earns a plan earns the effort.
 
-**Running as a subagent for a higher-tier coordinator:** write the plan through Self-Review, save the plan + `.tasks.json`, commit, and return the plan path. Do NOT run the Execution Handoff — subagents cannot AskUserQuestion. The coordinator adjudicates `[FABLE-ADJUDICATE]` markers and runs the handoff itself.
+**Running as a dispatched plan writer:** write the plan through Self-Review, save the plan + `.tasks.json`, commit, and return the plan path. Do NOT run the Execution Handoff — subagents cannot AskUserQuestion. Expect revival: independent-review findings come back to you via resume — apply them, re-run Self-Review's mechanical checks on the amended tasks, commit, and return. The coordinator adjudicates `[FABLE-ADJUDICATE]` markers and runs the handoff itself.
 
 ## Escalation Boundaries
 
