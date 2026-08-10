@@ -122,11 +122,16 @@ After writing the spec document, look at it with fresh eyes:
 2. **Internal consistency:** Do any sections contradict each other? Does the architecture match the feature descriptions?
 3. **Scope check:** Is this focused enough for a single implementation plan, or does it need decomposition?
 4. **Ambiguity check:** Could any requirement be interpreted two different ways? If so, pick one and make it explicit.
-5. **Plan-stage escalation:** End the spec with a `## Plan-stage escalation` section — the 0-3 boundaries where the derived plan needs top-model adjudication instead of plan-writer judgment (novel algorithm choice, irreversible schema/migration, cross-source data semantics, security boundaries). One line each: boundary + why decomposition can't settle it. Most specs get `none`. You made these calls implicitly while designing — write down which ones the plan writer must flag, not decide.
+5. **Mechanism check:** Every behavioral claim ("aborts", "fails loud", "X is impossible") names the mechanism that enforces it — and you verified that mechanism's actual semantics at source. A helper's name is not its semantics: a warning collector may be non-fatal, a guard may be suppressed in some mode. The claim is a guess until traced.
+6. **Contract-preservation check:** Every "unchanged contract" / "consumers unaffected" claim: enumerate the actual consumer's inputs (grep what it reads) and diff against what the spec declares. Asserting preservation without listing what is consumed is how cross-section contradictions ship.
+7. **Rule-premise check:** Every rule covering multiple cases ("not in the config → 404"): test each covered case against the rule's premise. A case whose premise doesn't hold (one family derives from a different source than the rule assumes) is a design gap to resolve, not silent coverage.
+8. **Plan-stage escalation:** End the spec with a `## Plan-stage escalation` section — the 0-3 boundaries where the derived plan needs top-model adjudication instead of plan-writer judgment (novel algorithm choice, irreversible schema/migration, cross-source data semantics, security boundaries). One line each: boundary + why decomposition can't settle it. Most specs get `none`. You made these calls implicitly while designing — write down which ones the plan writer must flag, not decide.
 
 Fix any issues inline. No need to re-review — just fix and move on.
 
-**Revisions are drafting.** When later applying review findings or user-requested changes, every new factual claim in the revision gets the same verification as the original draft — findings-application is where unverified claims sneak in and buy extra review rounds. A code fix made mid-review gets verified against ALL consumers of what it touched before the spec cites it.
+Checks 5-7 are mechanical — most independent-review blockers on specs are this class, and every one caught here is a review round saved.
+
+**Revisions are drafting.** When later applying review findings or user-requested changes, every new factual claim in the revision gets the same verification as the original draft — findings-application is where unverified claims sneak in and buy extra review rounds. A code fix made mid-review gets verified against ALL consumers of what it touched before the spec cites it. Re-run checks 5-7 on every revised section: revision claims fail the same ways draft claims do.
 
 **User Review Gate:**
 After the spec review loop passes, ask the user to review the written spec before proceeding:
