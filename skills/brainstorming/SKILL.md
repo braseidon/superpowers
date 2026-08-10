@@ -126,6 +126,8 @@ After writing the spec document, look at it with fresh eyes:
 
 Fix any issues inline. No need to re-review — just fix and move on.
 
+**Revisions are drafting.** When later applying review findings or user-requested changes, every new factual claim in the revision gets the same verification as the original draft — findings-application is where unverified claims sneak in and buy extra review rounds. A code fix made mid-review gets verified against ALL consumers of what it touched before the spec cites it.
+
 **User Review Gate:**
 After the spec review loop passes, ask the user to review the written spec before proceeding:
 
