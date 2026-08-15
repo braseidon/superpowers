@@ -59,6 +59,19 @@ assert_not_contains "$ROTOTILL_SPEC" "~/.config/superpowers/worktrees" "rototill
 assert_not_contains "$ROTOTILL_PLAN" "~/.config/superpowers/worktrees" "rototill plan does not preserve old global path policy"
 assert_not_contains "$ROTOTILL_PLAN" "legacy path compat" "rototill plan does not advertise legacy path compatibility"
 
+# Opt-in policy: no worktree unless the human partner asked; no consent prompt manufactured.
+EXECUTING_SKILL="$REPO_ROOT/skills/executing-plans/SKILL.md"
+SDD_SKILL="$REPO_ROOT/skills/subagent-driven-development/SKILL.md"
+IMPLEMENTER_PROMPT="$REPO_ROOT/skills/subagent-driven-development/implementer-prompt.md"
+
+assert_contains "$USING_SKILL" "No request, no worktree" "using-git-worktrees states the opt-in principle"
+assert_not_contains "$USING_SKILL" "Would you like me to set up an isolated worktree" "using-git-worktrees does not prompt for worktree consent"
+assert_contains "$USING_SKILL" "not a scratch checkout" "using-git-worktrees forbids throwaway worktrees for before-state diffs"
+assert_contains "$EXECUTING_SKILL" "Worktrees are opt-in" "executing-plans Step 0.5 is opt-in, not REQUIRED-create"
+assert_not_contains "$EXECUTING_SKILL" "to create one" "executing-plans no longer mandates worktree creation on main"
+assert_contains "$SDD_SKILL" "Worktrees are" "subagent-driven-development Setup states the opt-in policy"
+assert_contains "$IMPLEMENTER_PROMPT" "Do not create branches or" "implementer prompt pins the subagent to the dispatched checkout"
+
 echo ""
 
 if [ "$failures" -gt 0 ]; then

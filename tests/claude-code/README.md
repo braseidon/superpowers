@@ -122,6 +122,13 @@ RED-GREEN-REFACTOR validation for the using-git-worktrees skill (~5 minutes):
 - PRESSURE: same as GREEN under urgency framing with pre-existing `.worktrees/`
 - Drill scenario `worktree-creation-under-pressure.yaml` covers the PRESSURE phase only
 
+#### test-worktree-opt-in.sh
+RED-GREEN validation that worktrees are opt-in (~3 minutes per phase, headless Claude):
+- RED: worktree-by-default skill text — agent asks for consent or recommends a worktree
+- GREEN: opt-in skill text, nobody asked — agent works in place, no worktree, no prompt
+- REQUESTED: opt-in skill text, human partner asked in so many words — agent still sets one up
+- Static assertions for the same policy live in `test-worktree-path-policy.sh` (fast suite)
+
 ## Adding New Tests
 
 1. Create new test file: `test-<skill-name>.sh`

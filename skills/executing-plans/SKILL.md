@@ -32,13 +32,13 @@ Load plan, review critically, execute all tasks, report when complete.
 
 Update `.tasks.json` after every task status change.
 
-### Step 0.5: Verify Workspace (Worktree Check)
+### Step 0.5: Settle the Workspace
 
-Before calling `using-git-worktrees`, check if a worktree already exists:
+Worktrees are opt-in — created only when your human partner asked for one (conversation, instruction file, or the plan). **REQUIRED SUB-SKILL:** `superpowers:using-git-worktrees` — its Step 0 decides:
 
-1. Run `git worktree list` to see all existing worktrees
-2. If a worktree for the plan's branch already exists: **cd into it — do NOT create a new one**
-3. If on main/master with no worktree: **REQUIRED SUB-SKILL:** Use `superpowers:using-git-worktrees` to create one
+1. `git worktree list` shows one for this plan's branch, or you are already inside a linked worktree: **cd into / stay in it — do NOT create another**
+2. Isolation was requested and none exists: the skill creates one
+3. Nothing was requested: work in place in the current checkout on the current branch — no worktree, no consent prompt
 
 ### Step 1: Load and Review Plan
 1. Read plan file
@@ -105,6 +105,6 @@ After all tasks complete and verified:
 ## Integration
 
 **Required workflow skills:**
-- **superpowers:using-git-worktrees** - Ensures isolated workspace (creates one or verifies existing)
+- **superpowers:using-git-worktrees** - Settles the workspace (in place by default; worktree only when requested)
 - **superpowers:writing-plans** - Creates the plan this skill executes
 - **superpowers:finishing-a-development-branch** - Complete development after all tasks

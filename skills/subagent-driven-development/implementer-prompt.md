@@ -47,7 +47,9 @@ Task tool (general-purpose):
     5. Self-review (see below)
     6. Report back
 
-    Work from: [directory]
+    Work from: [directory] — stay in this checkout. Do not create branches or
+    worktrees; a pre-change reference state comes from `git stash` or
+    `git show <sha>:<path>`, never from a second working tree.
 
     **While you work:** If you encounter something unexpected or unclear, **ask questions**.
     It's always OK to pause and clarify. Don't guess or make assumptions.
