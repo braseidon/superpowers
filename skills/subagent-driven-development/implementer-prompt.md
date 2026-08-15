@@ -48,8 +48,14 @@ Task tool (general-purpose):
     6. Report back
 
     Work from: [directory] — stay in this checkout. Do not create branches or
-    worktrees; a pre-change reference state comes from `git stash` or
-    `git show <sha>:<path>`, never from a second working tree.
+    worktrees, not even a detached throwaway to measure a "before" state (a
+    second checkout has none of this one's installed dependencies or
+    gitignored data, so nothing runs there). Pre-change comparisons come from a
+    baseline captured BEFORE you edited, or from `git show <sha>:<path>` /
+    `git diff <sha>` on individual files. If a delta is asked for and no
+    baseline was captured, report the absolute number and say no baseline
+    exists — do not manufacture one, not from a second checkout and not by
+    reverting your edit in place to measure and re-applying it.
 
     **While you work:** If you encounter something unexpected or unclear, **ask questions**.
     It's always OK to pause and clarify. Don't guess or make assumptions.

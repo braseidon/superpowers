@@ -19,7 +19,7 @@ Worktrees are **opt-in**. Work happens in the current checkout unless your human
 
 **No request → work in place.** Do not ask "would you like a worktree?" — that question manufactures the request; the answer is already no. Skip to Step 3 and run the baseline in the current checkout. Report: "Working in place at `<path>` on branch `<name>`."
 
-**A fresh worktree is also not a scratch checkout.** Need the pre-change state to diff against? `git stash`, `git show <sha>:<path>`, `git diff <sha>`, or a baseline captured before editing — never a second working tree.
+**A fresh worktree is also not a scratch checkout** — not even `git worktree add --detach <tmp> HEAD` to measure a "before" state. Pre-change comparisons come from a baseline captured before editing, or from `git show <sha>:<path>` / `git diff <sha>` on individual files. No baseline captured and a delta is wanted? Report the absolute number and say no baseline exists — never build one from a second working tree.
 
 **Why in place is the default:** a new worktree has none of the gitignored files the current checkout accumulated — installed dependencies (`node_modules/`, `vendor/`), env files, generated data, build output. Tests, type checks, and project CLIs are dead in it until every setup step is re-run, and some setup (secrets, generated caches) cannot be re-run by a script at all. Isolation that cannot run the test suite protects nothing.
 
@@ -155,7 +155,7 @@ Only fall back to `git worktree remove` if you have no native exit tool availabl
 |-----------|--------|
 | Nobody asked for isolation | Work in place, baseline in current checkout (Step 0) — no consent prompt |
 | Plan-execution skill routed you here | That is the check, not a request — Step 0 decides |
-| Need a "before" state to diff against | `git stash` / `git show <sha>:<path>` / `git diff <sha>` — not a worktree |
+| Need a "before" state to diff against | Baseline captured before editing, or `git show <sha>:<path>` / `git diff <sha>` — not a worktree; no baseline = report the absolute number |
 | Already in linked worktree | Skip creation (Step 0) |
 | In a submodule | Treat as normal repo (Step 0 guard) |
 | Native worktree tool available | Use it (Step 1a) |
@@ -177,7 +177,7 @@ Only fall back to `git worktree remove` if you have no native exit tool availabl
 | "Asking for consent is harmless — I'll just offer a worktree" | The prompt is the cost: it stalls the run and hands your human partner a decision they already made by not asking. Silence means in place. |
 | "The plan touches many files — that deserves isolation" | Scope is not a request. Isolation comes from small, pathspec'd commits. |
 | "A clean worktree gives a trustworthy baseline" | A fresh worktree has no dependencies, no env, no generated data — its baseline is "everything fails". Baseline in the checkout that can run the tests. |
-| "I only need a throwaway checkout to diff the before state" | `git show <sha>:<path>`, `git stash`, `git diff <sha>` give you the before state without a second tree. |
+| "I only need a throwaway detached checkout to measure the before state" | A second checkout has no installed dependencies or gitignored data — the measurement fails or lies. Use the baseline captured before editing or `git show <sha>:<path>`; with no baseline, report the absolute number and say so. |
 | "I'm obviously not in a worktree — no need to check" | Run Step 0. Harness-created isolation and submodules both fool eyeballing; the detection commands settle it. |
 | "`git worktree add` is quicker than hunting for a native tool" | A native tool (e.g. `EnterWorktree`) owns placement, branching, and cleanup. Bypassing it is the #1 mistake — it creates phantom state your harness can't see or manage. |
 | "The worktree directory is surely ignored already" | Run `git check-ignore`. An unignored worktree directory commits the whole tree into the repo. |

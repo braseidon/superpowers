@@ -127,6 +127,7 @@ RED-GREEN validation that worktrees are opt-in (~3 minutes per phase, headless C
 - RED: worktree-by-default skill text — agent asks for consent or recommends a worktree
 - GREEN: opt-in skill text, nobody asked — agent works in place, no worktree, no prompt
 - REQUESTED: opt-in skill text, human partner asked in so many words — agent still sets one up
+- IMPLEMENTER-RED / IMPLEMENTER-GREEN: an implementer asked for a before/after delta with no baseline and stash blocked — unguided it manufactures a before-state (throwaway worktree or in-place revert); with the implementer-prompt `Work from:` paragraph it reports the absolute count and says no baseline exists
 - Static assertions for the same policy live in `test-worktree-path-policy.sh` (fast suite)
 
 ## Adding New Tests
