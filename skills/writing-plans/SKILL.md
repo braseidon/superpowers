@@ -203,9 +203,11 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 **9. Execution recommendation:** Confirm the plan ends with an **Execution recommendation** line: subagent-driven vs parallel-session, recommended orchestrator model (Fable for judgment-dense coordination, Opus otherwise), one clause why.
 
+**10. Absence criteria vs the plan's own text:** For every criterion that asserts a string's ABSENCE ("`rg foo` returns zero hits under `src/`"), grep the plan for that string. If the plan supplies code, a docblock, or a comment for that scope containing the string, the criterion is unmeetable as written and the implementer must choose between your prose and your gate. Either remove the string from the supplied text, or scope the criterion to imports/code references (`rg "from .*foo"`) instead of any occurrence.
+
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
-Checks 4-6 are mechanical — most independent-review blockers are this class, and every one caught here is a review round saved.
+Checks 4-6 and 10 are mechanical — most independent-review blockers are this class, and every one caught here is a review round saved.
 
 After self-review passes, commit the plan + `.tasks.json`. Any independent review dispatch needs a committed doc — the commit sha is the review's delta base.
 
@@ -261,6 +263,10 @@ For each task in the plan, create a corresponding native task. Embed metadata as
 
 **Why it matters.** Both execution paths (`executing-plans` and `subagent-driven-development`) read the task description via TaskGet and pass it to the implementing subagent. A one-sentence description makes the subagent improvise AC. The plan `.md` is not a fallback — TaskGet does not read it.
 
+**The `.tasks.json` is a LOSSY projection of the plan body** — only `id`/`subject`/`status`/`blockedBy`/`description` survive. Two things the plan body carries have no native field and MUST be encoded in each task's description or a JSON-only runner loses them:
+- **Checkpoint label.** `checkpoint` is not a native task field. Put the task's label from `## Review checkpoints` in the metadata fence (`"checkpoint": "CP2"`) — otherwise every review gate vanishes for an orchestrator driving from the JSON.
+- **Conditional gates.** `blockedBy` expresses UNCONDITIONAL edges only. A task gated on something that may park (a `[FABLE-ADJUDICATE]` decision, a `[D]`-able task) gets NO `blockedBy` edge; instead its description opens with an `ORCHESTRATOR:` line stating the gate and the action ("add `5` to `blockedBy` before dispatch if Task 5 is proceeding; otherwise dispatch as-is"). A hard edge on a parked task silently stalls the whole downstream chain, including tasks unrelated to the gate.
+
 **Self-check before finishing the skill.** This is a mechanical count, not a read-and-confirm — a prose pass can be rubber-stamped, a count can't. For each of the four section headers (`**Goal:**`, `**Files:**`, `**Acceptance Criteria:**`, `**Verify:**`), run `grep -c` over `<plan>.tasks.json`:
 
 ```bash
@@ -289,7 +295,7 @@ TaskCreate:
     **Verify:** [From task's Verify line]
 
     ```json:metadata
-    {"files": ["path/to/file1.py"], "verifyCommand": "pytest tests/path/ -v", "acceptanceCriteria": ["criterion 1", "criterion 2"], "modelTier": "mechanical"}
+    {"files": ["path/to/file1.py"], "verifyCommand": "pytest tests/path/ -v", "acceptanceCriteria": ["criterion 1", "criterion 2"], "checkpoint": "CP1", "modelTier": "mechanical"}
     ```
   activeForm: "Implementing [Component Name]"
 ```
@@ -305,7 +311,7 @@ See `skills/shared/task-format-reference.md` for the full metadata schema.
 
 ### Setting Dependencies
 
-After all tasks created, set blockedBy relationships:
+After all tasks created, set blockedBy relationships — **unconditional prerequisites only** (a conditional gate is an `ORCHESTRATOR:` line in the description, see the hard rule above):
 
 ```
 TaskUpdate:

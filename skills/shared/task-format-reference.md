@@ -40,6 +40,7 @@ Embed metadata as a `json:metadata` code fence at the end of the TaskCreate desc
 | `files` | string[] | yes | Paths to create/modify/delete |
 | `verifyCommand` | string | yes | Command to verify task completion |
 | `acceptanceCriteria` | string[] | yes | List of testable criteria |
+| `checkpoint` | string | no | Review-checkpoint label from the plan's `## Review checkpoints` section (e.g. `CP2`). Not a native task field — the `.tasks.json` carries no checkpoints otherwise, so a JSON-only orchestrator loses every review gate. Conditional dependencies (edges that exist only if a gated task proceeds) are likewise not expressible in `blockedBy`; encode them as an `ORCHESTRATOR:` line in the description. |
 | `estimatedScope` | "small" \| "medium" \| "large" | no | Relative effort indicator |
 | `tags` | string[] | no | Free-form tags (e.g. `["verification", "perf"]`). Opt-in hooks can key off tags. |
 | `subagentType` | string | no | Required `subagent_type` value for Agent dispatches during this task (e.g. `general-purpose`, `local`, `Explore`). The `pre-agent-task-dispatch-validate` hook blocks Agent calls that disagree. |
