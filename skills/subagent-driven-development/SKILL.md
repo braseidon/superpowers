@@ -7,9 +7,9 @@ description: Use when executing implementation plans with independent tasks in t
 
 Execute plan by dispatching fresh subagent per task, with two-stage review after each: spec compliance review first, then code quality review.
 
-**Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work.
+**Why subagents:** You delegate tasks to specialized agents with isolated context. By precisely crafting their instructions and context, you ensure they stay focused and succeed at their task. They should never inherit your session's context or history — you construct exactly what they need. This also preserves your own context for coordination work — and lets independent tasks run at the same time instead of one after another.
 
-**Core principle:** Fresh subagent per task + two-stage review (spec then quality) = high quality, fast iteration
+**Core principle:** Fresh subagent per task, the whole frontier of independent tasks dispatched at once, two-stage review (spec then quality) = high quality, fast iteration
 
 **Continuous execution:** Do not pause to check in with your human partner between tasks. Execute all tasks from the plan without stopping. The only reasons to stop are: BLOCKED status you cannot resolve, ambiguity that genuinely prevents progress, or all tasks complete. "Should I continue?" prompts and progress summaries waste their time — they asked you to execute the plan, so execute it.
 
@@ -106,6 +106,8 @@ digraph process {
 }
 ```
 
+The graph is the loop for ONE task. Tasks whose `blockedBy` are complete and whose `files` are disjoint run their loops concurrently — see "Dispatch the frontier" below.
+
 ## Setup
 
 Settle the workspace with superpowers:using-git-worktrees. Worktrees are
@@ -140,8 +142,12 @@ a ledger file, not only in the task list.
 - `git clean -fdx` will destroy the workspace (it's git-ignored scratch); if
   that happens, recover from `git log`.
 - The ledger records STATE, not reasoning. Entries are the one-line forms
-  in this skill (dispatch, fix round, complete, minor, parked, BLOCKED) —
-  one event, one line; only a parked ruling may run to three. No
+  in this skill (dispatch, fix round, complete, minor, parked, ruling,
+  BLOCKED) — one event, one line; only a parked ruling may run to three.
+  Every decision you take on your human partner's behalf — a plan
+  contradiction resolved from the header's recorded decisions, a tier
+  correction, a breaker adjudication — is a `Task <N>: ruling — <what> —
+  <why> — <cost if wrong>` line. No
   methodology narration, no reviewer praise, no self-correction essays, no
   restating an earlier entry's facts — every extra line is re-read on
   every later turn. A lesson about your own process is not state: put it
@@ -165,45 +171,57 @@ When dispatching an implementer subagent:
 
 ## Model Selection
 
-Use the least powerful model that can handle each role to conserve cost and increase speed.
+The plan writer assigned every task a `modelTier` (`mechanical` |
+`standard` | `frontier`, in the task's `json:metadata`). **Dispatch the
+implementer at that tier's model. Do not re-decide.** Re-deciding is where
+tiers creep upward: a controller "unsure" about a well-specified task
+upgrades it, and the savings the tiering exists for never arrive. A tier is
+wrong only when the brief contradicts it — a `mechanical` task whose steps
+leave a design choice open — and then you ledger the correction as a
+ruling (`Task <N>: ruling — tier mechanical→frontier — <why>`) and dispatch
+at the corrected tier.
 
-**Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): use a fast, cheap model. Most implementation tasks are mechanical when the plan is well-specified.
+Tier → model comes from the project's routing (routing file or instruction
+file). Default reading when the project names none:
 
-**Integration and judgment tasks** (multi-file coordination, pattern matching, debugging): use a standard model.
+- `mechanical`, `standard` → mid tier (Sonnet). Both are transcription plus
+  testing when the plan carries the code — and a plan written by
+  writing-plans always does. Multi-file is not a reason to upgrade; a
+  decision left open at edit time is.
+- `frontier` → top tier (Opus): a design choice remains, broad codebase
+  understanding is needed, or the task sits in a domain the project's
+  instruction file routes to its top tier.
+- Never the cheap tier (Haiku) for implementation: it routinely takes 2-3×
+  the turns on multi-step work and costs more overall.
 
-**Architecture, design, and review tasks**: use the most capable available model.
+**One bump, no retry.** A mid-tier implementer stuck on REASONING — it
+returns BLOCKED or DONE_WITH_CONCERNS about correctness with the context it
+needed already in hand — is re-dispatched FRESH on the top tier with the
+brief path, the report-file path, and its concerns verbatim; never a second
+mid-tier attempt at the same task. A missing fact is not a reasoning
+problem: NEEDS_CONTEXT, or a BLOCKED whose cause is a question the plan
+header or your cross-task context answers, gets the answer and a resume of
+the same agent (Handle the report, route 1) — and the bump if it comes back
+stuck again. A subagent's model is fixed at launch (SendMessage cannot
+change it); the report file is the handoff.
 
-**Review tasks**: choose the model with the same judgment, scaled to the
-diff's size, complexity, and risk. A small mechanical diff does not need the
-most capable model; a subtle concurrency change does. Scoped re-reviews of
-small fix diffs take a cheap-to-mid tier.
-
-**Fix-loop escalation (rounds 4-5)**: use a model at least one tier above
-the implementer that got stuck.
+**Reviewers:** task and checkpoint reviews run on the top tier — the
+reviewer's job is catching what the implementer missed, and a mid-tier
+implementer under a top-tier reviewer is where the savings are safe; the
+reverse pairing is not. Scoped re-reviews (verdict named findings in a small
+fix diff) run on the mid tier. The final whole-branch review and fix-loop
+rounds 4-5 run on the top tier.
 
 **Always specify the model explicitly when dispatching a subagent.** An
 omitted model inherits your session's model — often the most capable and
 most expensive — which silently defeats this section.
 
-**Turn count beats token price.** Wall-clock and context cost scale with how
-many turns a subagent takes, and the cheapest models routinely take 2-3× the
-turns on multi-step work — costing more overall. Use a mid-tier model as the
-floor for reviewers and for implementers working from prose descriptions.
-When the task's plan text contains the complete code to write, the
-implementation is transcription plus testing: use the cheapest tier for
-that implementer. Single-file mechanical fixes also take the cheapest tier.
-
 **Effort floor when the harness pins reasoning effort** (effort-pinned agent
-types like `general-high`): cheap-tier models run high effort, always.
-Benched at medium effort, the cheap tier skipped investigation steps and
+types like `general-high`): mid-tier models run high effort, always.
+Benched at medium effort, the mid tier skipped investigation steps and
 conflated dispatch-prompt instructions with agent-definition instructions —
 dangerous, not just slow; high and xhigh were fine. Medium effort on the
-cheap tier is for trivial transcription with a small brief, nothing else.
-
-**Task complexity signals (implementation tasks):**
-- Touches 1-2 files with a complete spec → cheap model
-- Touches multiple files with integration concerns → standard model
-- Requires design judgment or broad codebase understanding → most capable model
+mid tier is for trivial transcription with a small brief, nothing else.
 
 ## The Task Loop
 
@@ -211,10 +229,33 @@ Everything you paste into a dispatch prompt — and everything a subagent
 prints back — stays resident in your context for the rest of the session
 and is re-read on every later turn. Hand artifacts over as files.
 
-### 1. Dispatch the implementer
+### 1. Dispatch the frontier
 
-Record BASE (`git rev-parse HEAD`) before dispatching — the review package
-and fix-round diffs need it.
+**The unit of dispatch is the frontier, not the next task.** Before every
+dispatch message, compute the frontier: every pending task whose `blockedBy`
+tasks are all complete AND whose `files` list shares no path with any task
+in progress or any other task in the same message. Dispatch the whole
+frontier in ONE message, every implementer in the background, and keep
+coordinating while they run. Mark each task `in_progress` BEFORE its
+dispatch — routing gates resolve each dispatch against the in-progress set,
+and an unmarked task's dispatch is judged against the wrong tier.
+
+- The `files` metadata IS the disjointness test. Overlap serializes;
+  uncertainty about overlap serializes; a task whose `files` list is empty
+  or visibly incomplete is not parallel-safe. Serial is the fallback for
+  overlap, never the default for independence — two independent tasks run
+  one after another is wall-clock you chose to burn.
+- Read-only dispatches (audits, baselines, verification gates, long test
+  suites) are always parallel-safe and run alongside implementers.
+- Parallel implementers interleave commits. Record each task's own BASE and
+  generate its review package scoped to its files
+  (`scripts/review-package PLAN_FILE BASE HEAD -- <task files>`) so a
+  sibling task's commits never land in its diff.
+- Parallelism never merges or skips a review: each task still gets its task
+  review — or its checkpoint batch — as it completes.
+
+Per implementer, record BASE (`git rev-parse HEAD`) before dispatching —
+the review package and fix-round diffs need it.
 
 - **Task brief:** before dispatching an implementer, run this skill's
   `scripts/task-brief PLAN_FILE N` — it extracts the task's full text to a
@@ -241,7 +282,8 @@ and fix-round diffs need it.
   a pointer to that ledger entry in the dispatch.
 - Record the implementer's agent identity from the dispatch result —
   fix-loop rounds 1-3 resume this agent.
-- Never dispatch multiple implementation subagents in parallel (conflicts).
+- Never two writers on one file. That is the whole parallelism rule;
+  "one implementer at a time" is not it.
 
 Template: [implementer-prompt.md](implementer-prompt.md)
 
@@ -257,7 +299,7 @@ Implementer subagents report one of four statuses. Handle each appropriately:
 
 **BLOCKED:** The implementer cannot complete the task. Assess the blocker:
 1. If it's a context problem, provide more context and re-dispatch with the same model
-2. If the task requires more reasoning, re-dispatch with a more capable model
+2. If the task requires more reasoning, re-dispatch fresh with a more capable model (a mid-tier implementer gets exactly one bump — see Model Selection)
 3. If the task is too large, break it into smaller pieces
 4. If the plan itself is wrong, escalate to the human
 
@@ -443,6 +485,15 @@ finishing-a-development-branch presents the options.
 
 ## Finish
 
+Before you delete anything, collect every ledger line that is a `ruling`
+or a `parked` entry — preflight rulings, tier corrections, parked findings,
+breaker adjudications, all of them — into your final message under
+**"Rulings I made"**, in the order you made them, each with what it costs
+if wrong. The list is exhaustive: if the ledger holds a ruling, the list
+holds it. That list is the only place the decisions you took on your human
+partner's behalf reach them; a ruling that dies with the workspace was a
+decision made in secret.
+
 When the final whole-branch review is clean and its fixes are merged,
 delete this plan's workspace (`rm -rf <workspace>`) — the git history is
 the record now. Sibling directories belong to other plans; leave them
@@ -464,6 +515,9 @@ Use superpowers:finishing-a-development-branch.
 | "Ledger bookkeeping is overhead" | The ledger is what survives compaction. Controllers without one have re-dispatched entire completed task sequences. |
 | "The ledger should capture my reasoning" | The ledger is a recovery map. State goes in one-liners; reasoning is diary that costs context on every later turn. |
 | "I'll note this process lesson in the ledger" | The workspace is deleted at Finish — the lesson dies there. Put it in your final report instead. |
+| "These two tasks are independent, but I'll run them one at a time to be safe" | Safe from what? Disjoint `files` + satisfied `blockedBy` IS the safety check. Serial independent tasks double wall-clock for nothing. |
+| "This task looks harder than `mechanical`, I'll send the top tier" | The plan writer tiered it with the task in hand. If the brief leaves a decision open, ledger a tier ruling; otherwise dispatch at the tier. |
+| "The implementer spawned its own reviewer — free extra assurance" | It's a duplicate seat reviewing the same diff; the task review is the gate. A worker-spawned reviewer is a defect to flag, not rigor. |
 
 ## Example Workflow
 
@@ -533,19 +587,6 @@ Final reviewer: All requirements met. Deferred minors triaged: none block merge.
 
 Done! Using superpowers:finishing-a-development-branch.
 ```
-
-## Bounded Parallel Dispatch
-
-Overlapping writers are forbidden, not parallelism itself — "Never dispatch
-multiple implementation subagents in parallel (conflicts)" above is the
-default for the sequential loop. Dispatch concurrently when every running
-agent passes the disjointness test:
-
-- **Read-only agents are always parallel-safe**: audits, log analysis, verification gates, long-running test suites (these are also ideal for free local agent types while implementation continues).
-- **Implementers may run concurrently ONLY when** their tasks' `files` lists share no path AND neither task appears in the other's `blockedBy` chain. The `files` metadata IS the test — no overlap means no conflict.
-- **Never** two writers on one file, and never use parallelism to skip reviews: each task still gets its own task review as it completes.
-- Mark every parallel task `in_progress` BEFORE dispatching its agent — model routing resolves each dispatch against the union of in-progress tiers, and an unmarked task's dispatch will be blocked against the wrong tier.
-- When overlap is uncertain, serialize. The sequential per-task loop above remains the default; parallelism is the optimization, not the baseline.
 
 ## Task Persistence Sync
 

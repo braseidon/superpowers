@@ -8,6 +8,7 @@ This is braseidon's **Claude Code-only** fork. `origin` = braseidon/superpowers,
 - **Deliberate fork deltas — do not "fix" back to upstream:** namespace `superpowers:` → `superpowers:`, `TodoWrite` → `TaskCreate`, plugin/marketplace renamed to braseidon, all non-Claude AI tooling (Cursor/Codex/Gemini/Copilot/OpenCode) deleted, `using-superpowers` trimmed to Claude-only.
 - **New unwanted upstream file?** Add it to the `PURGE` list in `scripts/sync-upstream.sh`, don't just delete it — a bare delete resurrects or conflicts on the next sync.
 - **Merge drivers are per-clone config:** `git config merge.ours.driver true` (see `.gitattributes`). Fresh clones must re-set it.
+- **Porting ONE upstream commit: `git cherry-pick -x <sha>`, never a hand re-type.** The `(cherry picked from commit …)` trailer is the only durable record of what was ported — patch-id matching (`git cherry`, `--cherry-pick`) is lossy across merges and reports ported work as missing. Check for a prior port with `git log -S'<distinctive phrase>'` or `git log --grep='<upstream subject>'` before porting.
 
 ## If You Are an AI Agent
 

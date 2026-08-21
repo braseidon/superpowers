@@ -107,6 +107,14 @@ Key principle: TDD cycles happen WITHIN tasks, not as separate tasks. A task is 
 - Adapters (Tasks 6+7) - matching/scaling is the risk surface, and cross-adapter parity can only be checked once both legs exist
 - Mechanical batch (Tasks 5, 9, 10, 11, 13) - one pass before final regression
 
+## Dispatch waves
+
+[Derived from `blockedBy` + `files`, one line per wave: wave 1 = every task with no blockers; wave N+1 = the tasks wave N unblocks, split wherever two tasks' `files` overlap. The execution controller dispatches a whole wave in one message, so every false edge here is wall-clock burned. `blockedBy` carries DATA dependencies only — a symbol, file, fixture, or interface the task consumes that an earlier task creates. "Comes later in the plan", "same area", "feels risky together" are not edges; an overlap in `files` is handled by the wave split, not by an edge.]
+
+- Wave 1: Tasks 0
+- Wave 2: Tasks 1, 5, 6, 9 (disjoint files)
+- Wave 3: Tasks 2, 7 (7 after 5+6)
+
 ---
 ```
 
@@ -205,9 +213,13 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 **10. Absence criteria vs the plan's own text:** For every criterion that asserts a string's ABSENCE ("`rg foo` returns zero hits under `src/`"), grep the plan for that string. If the plan supplies code, a docblock, or a comment for that scope containing the string, the criterion is unmeetable as written and the implementer must choose between your prose and your gate. Either remove the string from the supplied text, or scope the criterion to imports/code references (`rg "from .*foo"`) instead of any occurrence.
 
+**11. Tier vocabulary (mechanical):** `grep -o '"modelTier": *"[a-z]*"' <plan>.tasks.json | sort | uniq -c` — only `mechanical`, `standard`, `frontier` may appear, and the counts sum to the task count. Any other word (`judgment`, `orchestrator`, prose) is a plan failure: the routing gates reject it and the controller falls back to guessing.
+
+**12. Dispatch waves:** Confirm the `## Dispatch waves` section exists, every task appears in exactly one wave, wave 1 is non-empty, and every `blockedBy` edge names something consumed (walk the edges: if you cannot say what artifact of the blocker the blocked task reads, delete the edge).
+
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
-Checks 4-6 and 10 are mechanical — most independent-review blockers are this class, and every one caught here is a review round saved.
+Checks 4-6 and 10-12 are mechanical — most independent-review blockers are this class, and every one caught here is a review round saved.
 
 After self-review passes, commit the plan + `.tasks.json`. Any independent review dispatch needs a committed doc — the commit sha is the review's delta base.
 
@@ -279,6 +291,12 @@ grep -c '\*\*Verify:\*\*' <plan>.tasks.json
 Each count MUST equal the number of tasks. If any count is lower → a task dropped that section; TaskUpdate it to the full block BEFORE the Execution Handoff. Also confirm the `json:metadata` fence is present in every task. Fall back to per-task TaskGet only if the tasks file is missing.
 
 **Keep subjects compact.** The harness re-injects every task's subject line into context on periodic reminders, so subjects are paid for repeatedly — aim for ≤ 60 characters and put detail in the description.
+
+**`modelTier` is REQUIRED on every task, schema values only: `mechanical` | `standard` | `frontier`.** You assign it — you hold the task; the execution controller dispatches at the tier without re-deciding, so a tier you leave vague becomes a guess made by someone with less context. The test is whether a DECISION remains at edit time, not how many files the task touches:
+- `mechanical` — 1-2 files, the steps carry the code, nothing left to choose.
+- `standard` — several files or an integration seam, the steps still carry the code and every choice is already made. Multi-file alone never promotes a task.
+- `frontier` — the steps leave a design choice open, the task needs broad codebase understanding the brief cannot carry, or it sits in a domain the project's instruction file routes to its top tier (a HARD-TRIGGER area, a skill-gated surface). Name which in the task's prose, one clause.
+Never `judgment`, `orchestrator`, or any other word — the routing gates reject them (Self-Review check 11).
 
 ```yaml
 TaskCreate:
