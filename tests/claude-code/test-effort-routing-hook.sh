@@ -481,5 +481,120 @@ assert_trace_contains "effort itself passed (medium is the reviewer-tier effort)
 assert_trace_contains "model-tier check is what actually blocked" "tier-mismatch"
 echo ""
 
+echo "Test 13: role-aware mode splits the effort union the same way it splits models"
+# Role-aware routing file: implementers at their task's tier, reviewers at
+# "frontier", re-reviewers at "standard". The effort side must follow the same
+# split - an implementer no longer inherits the reviewer tier's effort, and a
+# reviewer is held to its own tier's effort instead of the task's.
+ROLEAWARE_DIR="$WORK/project-roleaware/docs/superpowers"
+mkdir -p "$ROLEAWARE_DIR"
+cat > "$ROLEAWARE_DIR/model-routing.json" <<'EOF'
+{"mechanical":"haiku","standard":"sonnet","frontier":"opus","reviewer":"frontier","rereviewer":"standard","effort":{"mechanical":"low","standard":"medium","frontier":"high"},"enforceEffort":true}
+EOF
+
+# Reviewer-grade definition: opus at high effort, matching the frontier tier
+# this file routes reviewers to.
+cat > "$AGENTS_DIR/worker-theta.md" <<'EOF'
+---
+name: worker-theta
+description: Reviewer-grade worker on opus at high effort.
+model: opus
+effort: high
+---
+
+You review at high effort.
+EOF
+
+echo "Test 13a: reviewer on a mechanical task, opus/high → allow (its own tier, not the task's)"
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"worker-theta","description":"Review Task 1 (spec + quality)","prompt":"You are reviewing one task."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/project-roleaware")
+: > "$SUPERPOWERS_USERGATE_TRACE_LOG"
+rc=$(run_hook "$INPUT")
+assert "exit code" "0" "$rc"
+assert_trace_contains "allow is a real effort verdict at the reviewer role" "effort-match tiers=mechanical effort=high role=reviewer"
+echo ""
+
+echo "Test 13b: implementer on the same task at the reviewer's effort (medium) → BLOCK"
+# worker-beta pins effort=medium, which under the LEGACY union was a legitimate
+# reviewer dispatch during a mechanical task (test 4 asserts exactly that). In
+# role-aware mode an implementer gets {low} only, so the same call must block -
+# and on the effort dial, not the model one (worker-beta pins model=haiku,
+# which mechanical maps to).
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"worker-beta","description":"Implement Task 1: crunch","prompt":"Read the brief."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/project-roleaware")
+: > "$SUPERPOWERS_USERGATE_TRACE_LOG"
+rc=$(run_hook "$INPUT")
+assert "exit code" "2" "$rc"
+assert_stderr_contains "effort headline, not the model one" "DOES NOT MATCH TASK THINKING EFFORT"
+assert_stderr_contains "names the detected role" "Detected dispatch role: implementer"
+assert_stderr_contains "names the tiers the role's effort comes from" "Its effort comes from tier(s): mechanical"
+assert_stderr_contains "required set no longer carries the reviewer effort" "thinking effort: low"
+echo ""
+
+echo "Test 13c: implementer at its own tier's effort (low) → allow"
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"worker-alpha","description":"Implement Task 1: crunch","prompt":"Read the brief."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/project-roleaware")
+: > "$SUPERPOWERS_USERGATE_TRACE_LOG"
+rc=$(run_hook "$INPUT")
+assert "exit code" "0" "$rc"
+assert_trace_contains "allow is a real effort verdict at the implementer role" "effort-match tiers=mechanical effort=low role=implementer"
+echo ""
+
+echo "Test 13d: re-reviewer held to the rereviewer tier's effort (medium), not the reviewer's"
+# worker-iota is the rereviewer tier's profile end to end: model sonnet
+# (standard's model) at medium effort (standard's effort). Both dials must pass.
+cat > "$AGENTS_DIR/worker-iota.md" <<'EOF'
+---
+name: worker-iota
+description: Re-reviewer-grade worker on sonnet at medium effort.
+model: sonnet
+effort: medium
+---
+
+You re-review scoped fix diffs.
+EOF
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"worker-iota","description":"Re-review Task 1 fix round 1","prompt":"Verify the fixes."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/project-roleaware")
+: > "$SUPERPOWERS_USERGATE_TRACE_LOG"
+rc=$(run_hook "$INPUT")
+assert "medium effort re-reviewer → allow" "0" "$rc"
+assert_trace_contains "verdict is the re-reviewer's own" "effort-match tiers=mechanical effort=medium role=rereviewer"
+# The reviewer tier's own profile (opus/high) is NOT a re-reviewer profile: the
+# effort check runs first and rejects high against the rereviewer tier's medium.
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"worker-theta","description":"Re-review Task 1 fix round 1","prompt":"Verify the fixes."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/project-roleaware")
+rc=$(run_hook "$INPUT")
+assert "high effort (the reviewer tier's) re-reviewer → block" "2" "$rc"
+assert_stderr_contains "effort headline, not the model one" "DOES NOT MATCH TASK THINKING EFFORT"
+assert_stderr_contains "names the detected role" "Detected dispatch role: rereviewer"
+assert_stderr_contains "names the rereviewer tier as the effort source" "Its effort comes from tier(s): standard"
+echo ""
+
+echo "Test 13e: unclassifiable dispatch under enforceEffort → allow, no effort verdict at all"
+# The gate only constrains SDD-shaped dispatches in role-aware mode. worker-zeta
+# (effort=high, model=haiku) matches neither the implementer effort nor the
+# implementer model here, so an allow can only come from the role check.
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"worker-zeta","description":"Research the loader","prompt":"Find where mods load."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/project-roleaware")
+: > "$SUPERPOWERS_USERGATE_TRACE_LOG"
+rc=$(run_hook "$INPUT")
+assert "exit code" "0" "$rc"
+assert_trace_contains "allowed by role classification" "role-unknown-not-gated"
+assert_trace_not_contains "no effort verdict was reached" "effort-match"
+assert_trace_not_contains "no effort block either" "effort-mismatch"
+echo ""
+
+echo "Test 13f: legacy file (no role keys) keeps the effort UNION for a reviewer-shaped call"
+# Same shape as 13b but against the legacy enforceEffort project: medium must
+# still be accepted because the legacy allowed set is {low} UNION {standard's
+# medium} regardless of role.
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"worker-beta","description":"Implement Task 1: crunch","prompt":"Read the brief."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/project")
+: > "$SUPERPOWERS_USERGATE_TRACE_LOG"
+rc=$(run_hook "$INPUT")
+assert "legacy union unchanged by role detection" "0" "$rc"
+assert_trace_contains "effort verdict still the legacy union" "effort-match tiers=mechanical effort=medium"
+echo ""
+
 echo "=== Summary: $FAILED failure(s) ==="
 exit "$FAILED"

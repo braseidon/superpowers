@@ -15,6 +15,27 @@
 # A concrete model value in task metadata ("model" key) overrides the tier;
 # in that case this hook defers to hooks/examples/pre-agent-task-dispatch-validate.sh.
 #
+# ROLE-AWARE MODE (opt-in, additive). The routing file may also carry two
+# top-level tier-name values:
+#   {"mechanical":"sonnet","standard":"sonnet","frontier":"opus",
+#    "reviewer":"frontier","rereviewer":"standard"}
+# Either key present → role-aware mode. "reviewer" defaults to "standard" and
+# "rereviewer" defaults to the effective reviewer tier, so a file carrying
+# neither key is LEGACY mode and behaves byte-for-byte as before.
+#
+# In role-aware mode the dispatch's role is detected from the Agent tool_input
+# (description + prompt), matching the subagent-driven-development templates:
+#   rereviewer  — description begins "Re-review", or prompt says "re-reviewing"
+#   reviewer    — description begins "Review", or prompt carries a review
+#                 package path (review-<hex7+>..<hex7+>.diff) or "Diff file:"
+#   implementer — description begins "Implement", or prompt carries a task
+#                 brief path (task-<N>-brief.md)
+#   unknown     — anything else; NOT gated (an Explore/research dispatch the
+#                 controller makes mid-plan is not part of the SDD loop)
+# Allowed set per role: implementer → the in-progress tasks' tier models only;
+# reviewer → the reviewer tier's model; rereviewer → the rereviewer tier's
+# model. Effort enforcement mirrors the same split.
+#
 # Decision order:
 #   1. SUPERPOWERS_ROUTING_GUARD=0 → allow.
 #   2. tool_name != "Agent" → allow.
@@ -31,11 +52,17 @@
 #   6. Task has a concrete "model" pin → allow (dispatch-validate hook owns pins).
 #   7. Task tier not in routing file → allow (fail-open, typos must not brick dispatches).
 #   8. Task tier maps to "inherit" → allow (no constraint for this task).
-#   9. Otherwise allowed = { resolve(task tier), resolve("standard") } (deduped;
-#      members whose tier is missing from the routing file are dropped).
-#      "standard" mapping to "inherit" makes the reviewer member a wildcard →
-#      allow any. Dispatch model in the allowed set → allow. Missing model
-#      param or model outside the set → block.
+#   9. Role-aware mode + unrecognized role → allow (not an SDD dispatch).
+#  10. Otherwise allowed =
+#      legacy:            { resolve(task tier)... , resolve("standard") }
+#      role implementer:  { resolve(task tier)... }
+#      role reviewer:     { resolve(reviewer tier) }
+#      role rereviewer:   { resolve(rereviewer tier) }
+#      (deduped; members whose tier is missing from the routing file are
+#      dropped — an empty set is fail-open). "standard" mapping to "inherit"
+#      makes the legacy reviewer member a wildcard → allow any. Dispatch model
+#      in the allowed set → allow. Missing model param or model outside the
+#      set → block.
 #
 # Escape hatch: SUPERPOWERS_ROUTING_GUARD=0 to disable.
 
@@ -67,8 +94,21 @@ INPUT=$(cat)
 # Trailing `tr -d '\r'` strips the CRLF that native Windows jq/python3
 # emit (no-op elsewhere); `exit "${PIPESTATUS[N]}"` re-exports the
 # producer's exit status so the fail-open fallbacks keep firing.
-FIELDS=$(echo "$INPUT" | jq -r '[(.tool_name // ""), (.tool_input.model // ""), (.tool_input.subagent_type // ""), (.cwd // ""), (.transcript_path // "")] | map(tostring | gsub("\\r|\\n"; " ")) | .[]' 2>/dev/null | tr -d '\r'; exit "${PIPESTATUS[1]}")
-{ IFS= read -r TOOL_NAME; IFS= read -r AGENT_MODEL; IFS= read -r AGENT_TYPE; IFS= read -r CWD; IFS= read -r TRANSCRIPT_PATH; } <<< "$FIELDS" || true
+#
+# The sixth field is the dispatch ROLE, classified inside the same jq pass so
+# the (potentially huge) prompt never has to cross into a shell variable —
+# only the one-word verdict does. Markers come from the
+# subagent-driven-development prompt templates: implementer-prompt.md
+# ("Implement Task N", task-<N>-brief.md), task/spec/code-quality reviewer
+# prompts ("Review ...", "Diff file:", review-<base7>..<head7>.diff written by
+# scripts/review-package) and re-review-prompt.md ("Re-review Task N fix round
+# R", "re-reviewing"). Re-review is tested FIRST: a re-review prompt also
+# carries "Diff file:", so the reviewer test would otherwise swallow it.
+# A jq built without Oniguruma has no test/2; the filter then fails, the
+# assignment fails, and the ERR trap allows — fail-open, like every other
+# parse failure here.
+FIELDS=$(echo "$INPUT" | jq -r '[(.tool_name // ""), (.tool_input.model // ""), (.tool_input.subagent_type // ""), (.cwd // ""), (.transcript_path // ""), (((.tool_input.description // "") | tostring) as $d | ((.tool_input.prompt // "") | tostring) as $p | if ($d | test("^[[:space:]]*re-review"; "i")) or ($p | test("re-reviewing"; "i")) then "rereviewer" elif ($d | test("^[[:space:]]*review"; "i")) or ($p | test("review-[0-9a-f]{7,}\\.\\.[0-9a-f]{7,}\\.diff")) or ($p | test("Diff file:")) then "reviewer" elif ($d | test("^[[:space:]]*implement"; "i")) or ($p | test("task-[0-9]+-brief\\.md")) then "implementer" else "" end)] | map(tostring | gsub("\\r|\\n"; " ")) | .[]' 2>/dev/null | tr -d '\r'; exit "${PIPESTATUS[1]}")
+{ IFS= read -r TOOL_NAME; IFS= read -r AGENT_MODEL; IFS= read -r AGENT_TYPE; IFS= read -r CWD; IFS= read -r TRANSCRIPT_PATH; IFS= read -r ROLE; } <<< "$FIELDS" || true
 
 [[ "$TOOL_NAME" != "Agent" ]] && { trace "?" "skip" "tool=$TOOL_NAME"; echo "$ALLOW"; exit 0; }
 
@@ -141,6 +181,27 @@ ROUTING_JSON=$(jq '.' "$ROUTING_FILE" 2>/dev/null) || {
 # carries it and nothing checks it), so no existing install changes behavior.
 # True -> a dispatch serving a tiered task must resolve to that tier's effort.
 ENFORCE_EFFORT=$(echo "$ROUTING_JSON" | jq -r '.enforceEffort // false' 2>/dev/null | tr -d '\r'; exit "${PIPESTATUS[1]}")
+
+# Role-aware routing: optional "reviewer"/"rereviewer" tier names. EITHER key
+# present arms role-aware mode (a file setting only "rereviewer" has clearly
+# opted in too). Neither → legacy mode: the reviewer member of the allowed set
+# is "standard" for every dispatch, exactly as before, and role plays no part.
+ROLE="${ROLE:-}"
+REVIEWER_TIER=$(echo "$ROUTING_JSON" | jq -r '.reviewer // empty' 2>/dev/null | tr -d '\r'; exit "${PIPESTATUS[1]}")
+REREVIEWER_TIER=$(echo "$ROUTING_JSON" | jq -r '.rereviewer // empty' 2>/dev/null | tr -d '\r'; exit "${PIPESTATUS[1]}")
+ROLE_AWARE=""
+[[ -n "$REVIEWER_TIER" || -n "$REREVIEWER_TIER" ]] && ROLE_AWARE=1
+REVIEWER_TIER="${REVIEWER_TIER:-standard}"
+REREVIEWER_TIER="${REREVIEWER_TIER:-$REVIEWER_TIER}"
+
+# Role-aware mode gates SDD-shaped dispatches only. A dispatch this hook cannot
+# classify (an Explore/research agent the controller sends mid-plan) is not part
+# of the implement/review loop and is allowed untouched — both dials. Deciding
+# this before the transcript scan also keeps those dispatches free of its cost.
+if [[ -n "$ROLE_AWARE" && -z "$ROLE" ]]; then
+    trace "?" "skip" "role-unknown-not-gated"
+    echo "$ALLOW"; exit 0
+fi
 
 # Custom agent types (subagent_type set and != "general-purpose") with an
 # explicit model param keep their MODEL exemption - they have their own cost
@@ -378,8 +439,21 @@ effort_for_tier() {
 if [[ "$ENFORCE_EFFORT" == "true" && -n "$TIERS_CSV" ]]; then
     EFFORTS_OK=()
     EFFORT_UNCONSTRAINED=""
-    IFS=',' read -r -a ETIER_ARR <<< "$TIERS_CSV"
-    for tier in ${ETIER_ARR[@]+"${ETIER_ARR[@]}"} "standard"; do
+    # Which tiers' efforts this dispatch may run at. Role-aware mode splits the
+    # legacy union: an implementer gets the in-progress tiers, a reviewer or
+    # re-reviewer gets its own configured tier and nothing else.
+    EFFORT_TIERS=()
+    if [[ -n "$ROLE_AWARE" ]]; then
+        case "$ROLE" in
+            reviewer)   EFFORT_TIERS=("$REVIEWER_TIER") ;;
+            rereviewer) EFFORT_TIERS=("$REREVIEWER_TIER") ;;
+            *)          IFS=',' read -r -a EFFORT_TIERS <<< "$TIERS_CSV" ;;
+        esac
+    else
+        IFS=',' read -r -a ETIER_ARR <<< "$TIERS_CSV"
+        EFFORT_TIERS=(${ETIER_ARR[@]+"${ETIER_ARR[@]}"} "standard")
+    fi
+    for tier in ${EFFORT_TIERS[@]+"${EFFORT_TIERS[@]}"}; do
         [[ -z "$tier" ]] && continue
         E=$(effort_for_tier "$tier")
         # Unknown tier -> contributes nothing (fail-open per member).
@@ -406,10 +480,15 @@ if [[ "$ENFORCE_EFFORT" == "true" && -n "$TIERS_CSV" ]]; then
             [[ -n "$AGENT_EFFORT" && "$AGENT_EFFORT" == "$e" ]] && EFFORT_MATCH=1
         done
         if [[ -z "$EFFORT_MATCH" ]]; then
-            trace "$TASK_ID" "block" "effort-mismatch tiers=$TIERS_DISPLAY required=${EFFORTS_OK[*]} got=${AGENT_EFFORT:-none}"
+            trace "$TASK_ID" "block" "effort-mismatch tiers=$TIERS_DISPLAY required=${EFFORTS_OK[*]} got=${AGENT_EFFORT:-none} role=${ROLE:-none}"
             {
                 echo "AGENT DISPATCH DOES NOT MATCH TASK THINKING EFFORT"
                 echo
+                if [[ -n "$ROLE_AWARE" ]]; then
+                    echo "Detected dispatch role: $ROLE (classified from this Agent call's"
+                    echo "description and prompt). Its effort comes from tier(s): ${EFFORT_TIERS[*]}"
+                    echo
+                fi
                 echo "Task #$TASK_ID ('$SUBJECT') is the most recent of the in_progress"
                 echo "tasks (tiers in progress: $TIERS_DISPLAY). The active routing file"
                 echo "($ROUTING_LABEL) sets \"enforceEffort\": true, and those tiers require"
@@ -446,7 +525,7 @@ if [[ "$ENFORCE_EFFORT" == "true" && -n "$TIERS_CSV" ]]; then
             } >&2
             exit 2
         fi
-        trace "$TASK_ID" "pass" "effort-match tiers=$TIERS_DISPLAY effort=$AGENT_EFFORT"
+        trace "$TASK_ID" "pass" "effort-match tiers=$TIERS_DISPLAY effort=$AGENT_EFFORT role=${ROLE:-none}"
     fi
 fi
 
@@ -468,83 +547,146 @@ fi
 
 trace "$TASK_ID" "parsed" "tiers=$TIERS_DISPLAY"
 
-# Build the allowed model set: the UNION of every in_progress task's resolved
-# tier (bounded parallel dispatch means a dispatch may serve any of them),
-# PLUS the reviewer tier ("standard") because spec & code-quality reviewers
-# run at standard while their task is in_progress.
+# Map one tier name to its model string ("" when the routing file has no such
+# key). A jq failure is returned, not swallowed: the caller's assignment then
+# fails and the ERR trap allows, preserving the fail-open the inline pipelines
+# above get from their `exit "${PIPESTATUS[1]}"`.
+resolve_tier() {
+    local out
+    out=$(echo "$ROUTING_JSON" | jq -r --arg tier "$1" '.[$tier] // empty' 2>/dev/null | tr -d '\r'; exit "${PIPESTATUS[1]}") || return $?
+    printf '%s' "$out"
+}
+
+# Build the allowed model set.
+#
+# Legacy mode: the UNION of every in_progress task's resolved tier (bounded
+# parallel dispatch means a dispatch may serve any of them), PLUS the reviewer
+# tier ("standard") because spec & code-quality reviewers run at standard while
+# their task is in_progress.
+#
+# Role-aware mode splits that union by role. A reviewer or re-reviewer is
+# checked against ITS tier alone — that is the whole point of the two keys:
+# with "standard" mapped down, the union would forbid the very reviewer model
+# the file asks for. An implementer gets the in-progress tiers with no reviewer
+# member added, so a reviewer-grade model is no longer a free pass for it.
 ALLOWED=()
-IFS=',' read -r -a TIER_ARR <<< "$TIERS_CSV"
-for tier in ${TIER_ARR[@]+"${TIER_ARR[@]}"}; do
-    [[ -z "$tier" ]] && continue
-    R=$(echo "$ROUTING_JSON" | jq -r --arg tier "$tier" '.[$tier] // empty' 2>/dev/null | tr -d '\r'; exit "${PIPESTATUS[1]}")
-    # Unknown tier member → drop it (fail-open per member; typos must not brick).
-    [[ -z "$R" ]] && continue
-    # Any member resolving to "inherit" → no constraint at all.
-    if [[ "$R" == "inherit" ]]; then
-        trace "$TASK_ID" "pass" "tier-inherit tiers=$TIERS_DISPLAY"
+ROLE_TIER=""
+if [[ -n "$ROLE_AWARE" && ( "$ROLE" == "reviewer" || "$ROLE" == "rereviewer" ) ]]; then
+    if [[ "$ROLE" == "reviewer" ]]; then ROLE_TIER="$REVIEWER_TIER"; else ROLE_TIER="$REREVIEWER_TIER"; fi
+    R=$(resolve_tier "$ROLE_TIER")
+    # Role tier unknown to the routing file → fail-open, same as a task tier typo.
+    if [[ -z "$R" ]]; then
+        trace "$TASK_ID" "pass" "role-tier-unknown-failopen role=$ROLE tier=$ROLE_TIER"
         echo "$ALLOW"; exit 0
     fi
-    DUP=""
-    for m in ${ALLOWED[@]+"${ALLOWED[@]}"}; do
-        [[ "$m" == "$R" ]] && DUP=1
+    if [[ "$R" == "inherit" ]]; then
+        trace "$TASK_ID" "pass" "role-tier-inherit role=$ROLE tier=$ROLE_TIER"
+        echo "$ALLOW"; exit 0
+    fi
+    ALLOWED=("$R")
+else
+    IFS=',' read -r -a TIER_ARR <<< "$TIERS_CSV"
+    for tier in ${TIER_ARR[@]+"${TIER_ARR[@]}"}; do
+        [[ -z "$tier" ]] && continue
+        R=$(resolve_tier "$tier")
+        # Unknown tier member → drop it (fail-open per member; typos must not brick).
+        [[ -z "$R" ]] && continue
+        # Any member resolving to "inherit" → no constraint at all.
+        if [[ "$R" == "inherit" ]]; then
+            trace "$TASK_ID" "pass" "tier-inherit tiers=$TIERS_DISPLAY"
+            echo "$ALLOW"; exit 0
+        fi
+        DUP=""
+        for m in ${ALLOWED[@]+"${ALLOWED[@]}"}; do
+            [[ "$m" == "$R" ]] && DUP=1
+        done
+        [[ -z "$DUP" ]] && ALLOWED+=("$R")
     done
-    [[ -z "$DUP" ]] && ALLOWED+=("$R")
-done
 
-# Every tier was unknown to the routing file → fail-open.
-if [[ ${#ALLOWED[@]} -eq 0 ]]; then
-    trace "$TASK_ID" "pass" "unknown-tier-failopen tiers=$TIERS_DISPLAY"
-    echo "$ALLOW"; exit 0
-fi
+    # Every tier was unknown to the routing file → fail-open.
+    if [[ ${#ALLOWED[@]} -eq 0 ]]; then
+        trace "$TASK_ID" "pass" "unknown-tier-failopen tiers=$TIERS_DISPLAY"
+        echo "$ALLOW"; exit 0
+    fi
 
-STANDARD_RESOLVED=$(echo "$ROUTING_JSON" | jq -r '.standard // empty' 2>/dev/null | tr -d '\r'; exit "${PIPESTATUS[1]}")
+    if [[ -z "$ROLE_AWARE" ]]; then
+        STANDARD_RESOLVED=$(resolve_tier "standard")
 
-# "standard" → "inherit" makes the reviewer member a wildcard: allow any.
-if [[ "$STANDARD_RESOLVED" == "inherit" ]]; then
-    trace "$TASK_ID" "pass" "standard-inherit-wildcard tiers=$TIERS_DISPLAY"
-    echo "$ALLOW"; exit 0
-fi
+        # "standard" → "inherit" makes the reviewer member a wildcard: allow any.
+        if [[ "$STANDARD_RESOLVED" == "inherit" ]]; then
+            trace "$TASK_ID" "pass" "standard-inherit-wildcard tiers=$TIERS_DISPLAY"
+            echo "$ALLOW"; exit 0
+        fi
 
-if [[ -n "$STANDARD_RESOLVED" ]]; then
-    DUP=""
-    for m in "${ALLOWED[@]}"; do
-        [[ "$m" == "$STANDARD_RESOLVED" ]] && DUP=1
-    done
-    [[ -z "$DUP" ]] && ALLOWED+=("$STANDARD_RESOLVED")
+        if [[ -n "$STANDARD_RESOLVED" ]]; then
+            DUP=""
+            for m in "${ALLOWED[@]}"; do
+                [[ "$m" == "$STANDARD_RESOLVED" ]] && DUP=1
+            done
+            [[ -z "$DUP" ]] && ALLOWED+=("$STANDARD_RESOLVED")
+        fi
+    fi
 fi
 
 GOT_DISPLAY="${AGENT_MODEL:-(none)}"
 if [[ -n "$AGENT_MODEL" ]]; then
     for m in "${ALLOWED[@]}"; do
         if [[ "$AGENT_MODEL" == "$m" ]]; then
-            trace "$TASK_ID" "pass" "tier-match tiers=$TIERS_DISPLAY model=$AGENT_MODEL"
+            trace "$TASK_ID" "pass" "tier-match tiers=$TIERS_DISPLAY model=$AGENT_MODEL role=${ROLE:-none}"
             echo "$ALLOW"; exit 0
         fi
     done
 fi
 
-trace "$TASK_ID" "block" "tier-mismatch tiers=$TIERS_DISPLAY allowed=${ALLOWED[*]} got=$AGENT_MODEL"
+trace "$TASK_ID" "block" "tier-mismatch tiers=$TIERS_DISPLAY allowed=${ALLOWED[*]} got=$AGENT_MODEL role=${ROLE:-none}"
 
-STANDARD_DISPLAY="${STANDARD_RESOLVED:-(tier 'standard' not mapped in routing file)}"
 PRIMARY_RESOLVED="${ALLOWED[0]}"
 
 {
     echo "AGENT DISPATCH DOES NOT MATCH TASK MODEL TIER"
     echo
-    echo "Task #$TASK_ID ('$SUBJECT') is the most recent of the in_progress"
-    echo "tasks (tiers in progress: $TIERS_DISPLAY). The active routing file"
-    echo "($ROUTING_LABEL) resolves those to model '$PRIMARY_RESOLVED'"
-    echo "(full allowed set: ${ALLOWED[*]}). Your Agent call passed model='$GOT_DISPLAY'."
-    echo
-    echo "Allowed per $ROUTING_LABEL:"
-    echo "  - implementer / fix dispatches → the model of the task they serve (allowed set above)"
-    echo "  - spec & code-quality reviewers → model: $STANDARD_DISPLAY"
-    echo "  - final whole-plan reviewer (runs after all tasks complete) → no in_progress task, this gate won't fire"
-    echo
-    echo "Options:"
-    echo "  1. Re-issue the Agent call with the model matching the task this"
-    echo "     dispatch serves — one of: ${ALLOWED[*]} (the plan tiered these"
-    echo "     tasks for cost reasons)."
+    if [[ -n "$ROLE_AWARE" ]]; then
+        REVIEWER_DISPLAY="$(resolve_tier "$REVIEWER_TIER")"
+        REREVIEWER_DISPLAY="$(resolve_tier "$REREVIEWER_TIER")"
+        echo "Detected dispatch role: $ROLE (classified from this Agent call's"
+        echo "description and prompt)."
+        if [[ -n "$ROLE_TIER" ]]; then
+            echo "That role routes to tier '$ROLE_TIER' → model '$PRIMARY_RESOLVED'."
+        else
+            echo "That role routes to the in_progress task tiers ($TIERS_DISPLAY)"
+            echo "→ allowed set: ${ALLOWED[*]}."
+        fi
+        echo "Task #$TASK_ID ('$SUBJECT') is the most recent of the in_progress"
+        echo "tasks. Your Agent call passed model='$GOT_DISPLAY'."
+        echo
+        echo "Allowed per $ROUTING_LABEL:"
+        echo "  - implementer / fix dispatches → the model of the task they serve"
+        echo "  - task & checkpoint reviewers → tier '$REVIEWER_TIER' → model: ${REVIEWER_DISPLAY:-(tier not mapped in routing file)}"
+        echo "  - scoped re-reviewers → tier '$REREVIEWER_TIER' → model: ${REREVIEWER_DISPLAY:-(tier not mapped in routing file)}"
+        echo "  - a dispatch this gate cannot classify by role (research/helper calls) → not gated"
+        echo "  - final whole-plan reviewer (runs after all tasks complete) → no in_progress task, this gate won't fire"
+        echo
+        echo "Options:"
+        echo "  1. Re-issue the Agent call with model: ${ALLOWED[*]} (the model this"
+        echo "     role is routed to), or fix the dispatch's description/prompt if the"
+        echo "     detected role is wrong."
+    else
+        STANDARD_DISPLAY="${STANDARD_RESOLVED:-(tier 'standard' not mapped in routing file)}"
+        echo "Task #$TASK_ID ('$SUBJECT') is the most recent of the in_progress"
+        echo "tasks (tiers in progress: $TIERS_DISPLAY). The active routing file"
+        echo "($ROUTING_LABEL) resolves those to model '$PRIMARY_RESOLVED'"
+        echo "(full allowed set: ${ALLOWED[*]}). Your Agent call passed model='$GOT_DISPLAY'."
+        echo
+        echo "Allowed per $ROUTING_LABEL:"
+        echo "  - implementer / fix dispatches → the model of the task they serve (allowed set above)"
+        echo "  - spec & code-quality reviewers → model: $STANDARD_DISPLAY"
+        echo "  - final whole-plan reviewer (runs after all tasks complete) → no in_progress task, this gate won't fire"
+        echo
+        echo "Options:"
+        echo "  1. Re-issue the Agent call with the model matching the task this"
+        echo "     dispatch serves — one of: ${ALLOWED[*]} (the plan tiered these"
+        echo "     tasks for cost reasons)."
+    fi
     echo "  2. If this dispatch is genuinely not work for any in_progress task"
     echo "     (unrelated helper call), or a tier is wrong, update that task's"
     echo "     metadata via TaskUpdate transparently, then retry."

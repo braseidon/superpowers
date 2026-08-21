@@ -207,7 +207,7 @@ Skills prose is not enforcement; agents skip instructions under load. So every l
 |-------|------|--------------|
 | **Session notice** (`session-start` hook) | Session start | Routing file detected → the tier rules and your mapping are injected into context. The agent starts the session already knowing the rules. |
 | **Plan gate** (`pre-taskcreate-model-tier` hook) | Every `TaskCreate` | A plan task without a valid `"modelTier"` in its `json:metadata` fence is blocked — including plan-shaped tasks (template headers or numbered subjects) that omit the fence entirely; the block message contains the full tier table, so the agent fixes and re-issues without reading anything. |
-| **Dispatch gate** (`pre-agent-model-routing` hook) | Every `Agent` dispatch | While tiered tasks are in progress, allows the union of the in-progress tasks' tier models plus the `standard` reviewer model; blocks anything else and names the correct dispatch per role. A concrete `"model"` pin in task metadata overrides the tier (pin enforcement: see [Recommended Configuration](#recommended-configuration)). |
+| **Dispatch gate** (`pre-agent-model-routing` hook) | Every `Agent` dispatch | While tiered tasks are in progress, allows the union of the in-progress tasks' tier models plus the `standard` reviewer model; blocks anything else and names the correct dispatch per role. Add the optional `reviewer`/`rereviewer` keys and it instead checks each dispatch against its detected role's tier (see [the role keys](#reviewers-above-implementers-the-reviewer--rereviewer-keys)). A concrete `"model"` pin in task metadata overrides the tier (pin enforcement: see [Recommended Configuration](#recommended-configuration)). |
 | **Handoff guard** (`pre-askuser-handoff-guard` hook) | After `writing-plans` creates tasks | When armed, allows `AskUserQuestion` only if it carries the two mandated options ("Subagent-Driven (this session)" / "Parallel Session (separate)") or marks itself as a mid-plan clarification with the literal token `CLARIFICATION` in the question. Blocks custom menus that bypass the execution-method choice and skip the subagent pipeline. |
 
 All three gates fail open (parse errors never brick a session) and share a kill switch: `SUPERPOWERS_ROUTING_GUARD=0`.
@@ -241,6 +241,18 @@ Create `docs/superpowers/model-routing.json` in your project:
 ### Role assignments when routing is on
 
 Implementers (and fix re-dispatches) run at their task's tier. Spec and code-quality reviewers run at `standard` — reviewing against explicit criteria is mid-tier work, and review output is the expensive direction at frontier prices. The final whole-plan reviewer runs after all tasks complete (no task in progress, so the dispatch gate does not constrain it) and should stay at session level — one frontier judgment pass per plan. When an implementer reports BLOCKED and needs more reasoning, escalate one tier up by updating the task's metadata transparently — never silently down.
+
+### Reviewers above implementers: the `reviewer` / `rereviewer` keys
+
+The default allowed set treats `standard` as the reviewer tier, which gets in the way when you want reviewers *more* capable than implementers: with `standard` mapped to a mid model, the gate blocks the top-tier reviewer you actually want. Add either optional key to switch the gate to role-aware mode:
+
+```json
+{"mechanical": "sonnet", "standard": "sonnet", "frontier": "opus", "reviewer": "frontier", "rereviewer": "standard"}
+```
+
+- Values are tier names, not model names. `"reviewer"` defaults to `"standard"` and `"rereviewer"` defaults to whatever the reviewer tier resolves to, so a file with neither key behaves exactly as before.
+- The gate classifies each dispatch by role from the Agent call's `description` and `prompt` (the `subagent-driven-development` templates: `Implement Task N` / a `task-N-brief.md` path → implementer, `Review …` / `Diff file:` / a review-package path → reviewer, `Re-review …` / "re-reviewing" → re-reviewer) and allows only that role's tier — implementers at their task's tier, task and checkpoint reviewers at the `reviewer` tier, scoped re-reviewers at the `rereviewer` tier. Effort enforcement splits the same way.
+- **A dispatch the gate cannot classify is not gated.** Research and helper agents you send mid-plan are outside the implement/review loop, so they pass untouched. Unknown tier names and `"inherit"` fail open as usual.
 
 ---
 

@@ -699,5 +699,156 @@ rc=$(run_hook "$INPUT")
 assert "body '---' pair cannot mint a model pin → exempt/allow" "0" "$rc"
 echo ""
 
+echo "Test 34: role-aware mode — reviewer/rereviewer tiers split the allowed set"
+# Routing file carrying the two optional role keys. Implementers run at their
+# task's tier (standard → sonnet here), task/checkpoint reviewers at the top
+# tier (frontier → opus), scoped re-reviewers at the mid tier (standard →
+# sonnet). Under the legacy union rule the opus reviewer would be BLOCKED on a
+# sonnet-tier task, which is the bug these keys exist to fix.
+ROLEAWARE_DIR="$WORK/roleawareproject/docs/superpowers"
+mkdir -p "$ROLEAWARE_DIR"
+cat > "$ROLEAWARE_DIR/model-routing.json" <<'EOF'
+{"mechanical":"sonnet","standard":"sonnet","frontier":"opus","reviewer":"frontier","rereviewer":"standard"}
+EOF
+
+echo "Test 34a: reviewer (description) on a sonnet-tier task, model=opus → allow"
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"opus","description":"Review Task 3 (spec + quality)","prompt":"You are reviewing one task."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-standard.jsonl" "$WORK/roleawareproject")
+rc=$(run_hook "$INPUT")
+assert "exit code" "0" "$rc"
+echo ""
+
+echo "Test 34b: implementer on the same sonnet-tier task, model=opus → block"
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"opus","description":"Implement Task 3: wire the gate","prompt":"Read the task brief."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-standard.jsonl" "$WORK/roleawareproject")
+rc=$(run_hook "$INPUT")
+assert "exit code" "2" "$rc"
+assert_stderr_contains "names the detected role" "Detected dispatch role: implementer"
+assert_stderr_contains "names the task tiers it must match" "in_progress task tiers (standard)"
+assert_stderr_contains "role table names the reviewer tier and model" "task & checkpoint reviewers → tier 'frontier' → model: opus"
+assert_stderr_contains "role table names the rereviewer tier and model" "scoped re-reviewers → tier 'standard' → model: sonnet"
+assert_stderr_contains "role table says unclassified dispatches are free" "cannot classify by role"
+echo ""
+
+echo "Test 34c: implementer at its own tier (sonnet) → allow"
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"sonnet","description":"Implement Task 3: wire the gate","prompt":"Read the task brief."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-standard.jsonl" "$WORK/roleawareproject")
+rc=$(run_hook "$INPUT")
+assert "exit code" "0" "$rc"
+echo ""
+
+echo "Test 34d: re-reviewer at the rereviewer tier (sonnet) → allow; at opus → block"
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"sonnet","description":"Re-review Task 3 fix round 2","prompt":"Verify the findings were addressed."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-standard.jsonl" "$WORK/roleawareproject")
+rc=$(run_hook "$INPUT")
+assert "re-reviewer at sonnet → allow" "0" "$rc"
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"opus","description":"Re-review Task 3 fix round 2","prompt":"Verify the findings were addressed."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-standard.jsonl" "$WORK/roleawareproject")
+rc=$(run_hook "$INPUT")
+assert "re-reviewer at opus → block (rereviewer tier is not the reviewer tier)" "2" "$rc"
+assert_stderr_contains "names the detected role" "Detected dispatch role: rereviewer"
+assert_stderr_contains "names the role's tier and model" "routes to tier 'standard' → model 'sonnet'"
+echo ""
+
+echo "Test 34e: unclassifiable dispatch (research/helper) in role-aware mode → allow"
+# The controller sends an Explore/research agent mid-plan. It is not part of the
+# implement/review loop, so the gate must not constrain it — the exact
+# over-reach that made the legacy union wrong for non-SDD dispatches.
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"opus","description":"Research the cache shape","prompt":"Find where the mods are loaded."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-standard.jsonl" "$WORK/roleawareproject")
+rc=$(run_hook "$INPUT")
+assert "unknown role → allow" "0" "$rc"
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","prompt":"go"},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-standard.jsonl" "$WORK/roleawareproject")
+rc=$(run_hook "$INPUT")
+assert "unknown role, no model param → allow" "0" "$rc"
+echo ""
+
+echo "Test 34f: role detected from the PROMPT when the description is generic"
+# Reviewer: the review package path scripts/review-package writes, plus the
+# "Diff file:" line from task-reviewer-prompt.md.
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"opus","description":"Task 3 gate","prompt":"**Diff file:** /repo/.superpowers/sdd/plan/review-1fdea0f..0f9622b.diff"},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-standard.jsonl" "$WORK/roleawareproject")
+rc=$(run_hook "$INPUT")
+assert "reviewer detected from Diff file:/review package path → opus allowed" "0" "$rc"
+# Implementer: the task brief path scripts/task-brief writes.
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"opus","description":"Task 3 work","prompt":"Read the brief: /repo/.superpowers/sdd/plan/task-3-brief.md"},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-standard.jsonl" "$WORK/roleawareproject")
+rc=$(run_hook "$INPUT")
+assert "implementer detected from task-N-brief.md → opus blocked" "2" "$rc"
+assert_stderr_contains "names the detected role" "Detected dispatch role: implementer"
+echo ""
+
+echo "Test 34g: a re-review prompt also carries 'Diff file:' → must classify as rereviewer, not reviewer"
+# Ordering guard. If the reviewer test ran first it would swallow every
+# re-review and hand it the reviewer tier (opus), silently doubling the cost of
+# every fix round.
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"opus","description":"Task 3 follow-up","prompt":"You are re-reviewing one task fix round.\\n\\n**Diff file:** /repo/.superpowers/sdd/plan/review-1fdea0f..0f9622b.diff"},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-standard.jsonl" "$WORK/roleawareproject")
+rc=$(run_hook "$INPUT")
+assert "opus blocked (rereviewer tier), so reviewer did not swallow it" "2" "$rc"
+assert_stderr_contains "names the detected role" "Detected dispatch role: rereviewer"
+echo ""
+
+echo "Test 34h: legacy file (no reviewer key) ignores role entirely — behavior unchanged"
+# Same reviewer-shaped dispatch as 34a against the ORIGINAL routing file:
+# mechanical→haiku, standard→sonnet. opus is outside {haiku, sonnet}, so the
+# legacy union blocks it exactly as it always did, with the legacy message.
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"opus","description":"Review Task 3 (spec + quality)","prompt":"You are reviewing one task."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/project")
+rc=$(run_hook "$INPUT")
+assert "reviewer-shaped dispatch still blocked under a legacy file" "2" "$rc"
+assert_stderr_contains "legacy message wording retained" "spec & code-quality reviewers → model: sonnet"
+assert_stderr_contains "legacy message names no role" "implementer / fix dispatches → the model of the task they serve (allowed set above)"
+if grep -qF "Detected dispatch role" "$WORK/stderr" 2>/dev/null; then
+    echo "  [FAIL] legacy message must not mention a detected role"
+    FAILED=$((FAILED + 1))
+else
+    echo "  [PASS] legacy message must not mention a detected role"
+fi
+# And an implementer-shaped dispatch at the legacy reviewer model still passes:
+# legacy mode keeps the standard member in the union for every role.
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"sonnet","description":"Implement Task 1: bulk work","prompt":"Read the brief."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/project")
+rc=$(run_hook "$INPUT")
+assert "legacy union still lets an implementer take the standard model" "0" "$rc"
+echo ""
+
+echo "Test 34i: rereviewer key alone arms role-aware mode; reviewer defaults to standard"
+ONLYRR_DIR="$WORK/onlyrrproject/docs/superpowers"
+mkdir -p "$ONLYRR_DIR"
+cat > "$ONLYRR_DIR/model-routing.json" <<'EOF'
+{"mechanical":"haiku","standard":"sonnet","frontier":"opus","rereviewer":"mechanical"}
+EOF
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"sonnet","description":"Review Task 1 (spec + quality)","prompt":"You are reviewing one task."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/onlyrrproject")
+rc=$(run_hook "$INPUT")
+assert "reviewer falls back to the standard tier (sonnet) → allow" "0" "$rc"
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"sonnet","description":"Re-review Task 1 fix round 1","prompt":"Verify the fixes."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/onlyrrproject")
+rc=$(run_hook "$INPUT")
+assert "re-reviewer held to its own tier (haiku), sonnet → block" "2" "$rc"
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"opus","description":"Poke around","prompt":"go"},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/onlyrrproject")
+rc=$(run_hook "$INPUT")
+assert "role-aware mode armed by rereviewer alone → unknown role ungated" "0" "$rc"
+echo ""
+
+echo "Test 34j: unknown role tier / inherit → fail-open"
+BADROLE_DIR="$WORK/badroleproject/docs/superpowers"
+mkdir -p "$BADROLE_DIR"
+cat > "$BADROLE_DIR/model-routing.json" <<'EOF'
+{"mechanical":"haiku","standard":"sonnet","frontier":"inherit","reviewer":"typoed","rereviewer":"frontier"}
+EOF
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"opus","description":"Review Task 1 (spec + quality)","prompt":"You are reviewing one task."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/badroleproject")
+rc=$(run_hook "$INPUT")
+assert "reviewer tier absent from the mapping → allow (typos must not brick)" "0" "$rc"
+INPUT=$(printf '{"tool_name":"Agent","tool_input":{"subagent_type":"general-purpose","model":"opus","description":"Re-review Task 1 fix round 1","prompt":"Verify the fixes."},"transcript_path":"%s","cwd":"%s"}' \
+    "$WORK/tier-mechanical.jsonl" "$WORK/badroleproject")
+rc=$(run_hook "$INPUT")
+assert "rereviewer tier maps to inherit → allow any" "0" "$rc"
+echo ""
+
 echo "=== Summary: $FAILED failure(s) ==="
 exit "$FAILED"

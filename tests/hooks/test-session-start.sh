@@ -260,6 +260,39 @@ assert_command_output \
     CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
     bash -c "cd '$noeffort_proj' && exec bash '$HOOK_UNDER_TEST'"
 
+roleaware_home="$(make_home role-aware-routing)"
+roleaware_proj="$(make_routing_project role-aware-routing '{"mechanical":"sonnet","standard":"sonnet","frontier":"opus","reviewer":"frontier","rereviewer":"standard"}')"
+assert_command_output \
+    "reviewer/rereviewer keys state both role tiers instead of the fixed standard sentence" \
+    "nested" \
+    'task and checkpoint reviewers use the "frontier" tier'"'"'s model and scoped re-reviewers the "standard" tier'"'"'s model' \
+    'spec and code-quality reviewers use the "standard" tier' \
+    "$roleaware_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    bash -c "cd '$roleaware_proj' && exec bash '$HOOK_UNDER_TEST'"
+
+rronly_home="$(make_home rereviewer-only-routing)"
+rronly_proj="$(make_routing_project rereviewer-only-routing '{"mechanical":"haiku","standard":"sonnet","frontier":"opus","rereviewer":"mechanical"}')"
+assert_command_output \
+    "rereviewer alone arms the role wording with reviewer defaulted to standard" \
+    "nested" \
+    'task and checkpoint reviewers use the "standard" tier'"'"'s model and scoped re-reviewers the "mechanical" tier'"'"'s model' \
+    'spec and code-quality reviewers use the "standard" tier' \
+    "$rronly_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    bash -c "cd '$rronly_proj' && exec bash '$HOOK_UNDER_TEST'"
+
+legacyrouting_home="$(make_home legacy-routing-wording)"
+legacyrouting_proj="$(make_routing_project legacy-routing-wording '{"mechanical":"haiku","standard":"sonnet","frontier":"inherit"}')"
+assert_command_output \
+    "routing file without role keys keeps the original reviewer sentence" \
+    "nested" \
+    'spec and code-quality reviewers use the "standard" tier' \
+    "task and checkpoint reviewers"$'\037'"scoped re-reviewers" \
+    "$legacyrouting_home" \
+    CLAUDE_PLUGIN_ROOT="$REPO_ROOT" \
+    bash -c "cd '$legacyrouting_proj' && exec bash '$HOOK_UNDER_TEST'"
+
 novanilla_home="$(make_home vanilla-no-routing)"
 novanilla_proj="$TEST_ROOT/vanilla-no-routing/project"
 mkdir -p "$novanilla_proj"

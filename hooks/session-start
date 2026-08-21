@@ -35,7 +35,22 @@ if [ ! -f "$routing_file" ]; then
 fi
 if [ -f "$routing_file" ]; then
     routing_mapping=$(sanitize_json_file "$routing_file")
-    routing_message="\n\n<model-routing-active>This project routes plan-execution subagents to cheaper models. Mapping (${routing_label}): ${routing_mapping}. Plan-time: every plan task's json:metadata fence MUST carry \"modelTier\" — \"mechanical\" (1-2 files, complete spec with code in the steps, no design judgment; most tasks in a well-specified plan), \"standard\" (multi-file integration, pattern matching, debugging), or \"frontier\" (design/architecture judgment). Tie-break: spec completeness wins. Dispatch-time: pass the Agent model parameter resolved from the in-progress task's tier via the mapping (\"inherit\" = omit the parameter); spec and code-quality reviewers use the \"standard\" tier's model; the final whole-plan reviewer (after all tasks complete) stays at session level — omit the model parameter. A task metadata \"model\" pin overrides its tier. Plugin gates enforce both sides (kill switch: SUPERPOWERS_ROUTING_GUARD=0). Full rationale: docs/model-routing-flow.md in the plugin repo.</model-routing-active>"
+    # Role-aware routing (optional): "reviewer"/"rereviewer" name the tiers the
+    # dispatch gate holds reviewers and re-reviewers to. Either key present →
+    # the notice states all three role tiers instead of the fixed "standard"
+    # reviewer sentence. Neither → the wording is byte-identical to before.
+    # "rereviewer" cannot be mis-captured as "reviewer": the pattern includes
+    # the opening quote, and "rereviewer" has no `"reviewer` substring.
+    reviewer_tier=$(printf '%s' "$routing_mapping" | sed -n 's/.*"reviewer"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    rereviewer_tier=$(printf '%s' "$routing_mapping" | sed -n 's/.*"rereviewer"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+    if [ -n "$reviewer_tier" ] || [ -n "$rereviewer_tier" ]; then
+        [ -n "$reviewer_tier" ] || reviewer_tier="standard"
+        [ -n "$rereviewer_tier" ] || rereviewer_tier="$reviewer_tier"
+        reviewer_clause="task and checkpoint reviewers use the \"${reviewer_tier}\" tier's model and scoped re-reviewers the \"${rereviewer_tier}\" tier's model (the dispatch gate classifies the role from the Agent call's description and prompt, and does not gate a dispatch it cannot classify)"
+    else
+        reviewer_clause="spec and code-quality reviewers use the \"standard\" tier's model"
+    fi
+    routing_message="\n\n<model-routing-active>This project routes plan-execution subagents to cheaper models. Mapping (${routing_label}): ${routing_mapping}. Plan-time: every plan task's json:metadata fence MUST carry \"modelTier\" — \"mechanical\" (1-2 files, complete spec with code in the steps, no design judgment; most tasks in a well-specified plan), \"standard\" (multi-file integration, pattern matching, debugging), or \"frontier\" (design/architecture judgment). Tie-break: spec completeness wins. Dispatch-time: pass the Agent model parameter resolved from the in-progress task's tier via the mapping (\"inherit\" = omit the parameter); ${reviewer_clause}; the final whole-plan reviewer (after all tasks complete) stays at session level — omit the model parameter. A task metadata \"model\" pin overrides its tier. Plugin gates enforce both sides (kill switch: SUPERPOWERS_ROUTING_GUARD=0). Full rationale: docs/model-routing-flow.md in the plugin repo.</model-routing-active>"
     # Per-tier thinking-effort map. IMPLICIT BY DEFAULT: whenever routing is
     # active the notice carries the recommended map even if the file never
     # mentions effort — the orchestrating model picks effort autonomously at
