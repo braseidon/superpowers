@@ -332,6 +332,18 @@ needed.
   call. Use the BASE you recorded before dispatching the implementer —
   never `HEAD~1`, which silently truncates multi-commit tasks. Never
   dispatch a task reviewer without a diff file.
+- **Share the repo with anything else that commits? Scope the package to
+  the task's files** — `scripts/review-package PLAN_FILE BASE HEAD -- <task
+  files>`. Foreign commits land between yours whenever another session,
+  agent or human works the same checkout, and `BASE..HEAD` sweeps every one
+  of them in: a package can arrive many times its real size and too large
+  to Read. This is not the parallel-dispatch case below — a strictly
+  sequential loop needs it too, because the interleaving comes from outside
+  your loop. Take the file list from the task's `files` metadata.
+- When a package still spans foreign commits, say so in the dispatch and
+  name the one commit that is the task's. The header's commit list covers
+  the whole range even when the diff body is scoped, so a reviewer reading
+  it unwarned will attribute a stranger's work to your implementer.
 - **Reviewer inputs:** the task reviewer gets three paths — the same brief
   file, the report file, and the review package — plus the global
   constraints that bind the task.
