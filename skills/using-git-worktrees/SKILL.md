@@ -11,8 +11,6 @@ Worktrees are **opt-in**. Work happens in the current checkout unless your human
 
 **Core principle:** No request, no worktree. Detect existing isolation first. Then use native tools. Then fall back to git. Never fight the harness.
 
-**Announce at start:** "I'm using the using-git-worktrees skill to settle the workspace."
-
 ## Step 0: Was Isolation Requested? Are You Already Isolated?
 
 **A worktree exists only because your human partner asked for one.** A request is explicit: this conversation, an instruction file (CLAUDE.md, AGENTS.md), or the plan itself says "worktree" / "isolated workspace". A plan-execution skill routing you here is NOT a request — it is asking you to run this check.
