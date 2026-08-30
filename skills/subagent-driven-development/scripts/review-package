@@ -9,8 +9,12 @@
 # (named per range, so a re-review after fixes gets a distinct fresh file).
 #
 # Pathspecs after `--` scope the Diff section only; the stat summary always
-# covers the whole range, so an excluded file still shows as changed. Use this
-# to keep a committed generated artifact out of the body a reviewer must read:
+# covers the whole range, and every changed file the pathspec drops is listed
+# by full path (with the commits that touched it) in the package AND warned
+# on stderr — a scoped package can never lose a file silently. Derive the
+# pathspec from the implementer's own commits, never from plan metadata:
+#   review-package plan.md BASE HEAD -- $(git show --name-only --format= SHA1 SHA2)
+# Or keep a committed generated artifact out of the body a reviewer must read:
 #   review-package plan.md BASE HEAD -- . ':(exclude)tests/fixtures/big.golden.json'
 set -euo pipefail
 
@@ -47,6 +51,16 @@ else
   out="$dir/review-$(git rev-parse --short "$base")..$(git rev-parse --short "$head").diff"
 fi
 
+excluded=()
+kept_count=0
+if [ ${#paths[@]} -gt 0 ]; then
+  kept_count=$(git diff --name-only "${base}..${head}" -- "${paths[@]}" | wc -l | tr -d ' ')
+  while IFS= read -r f; do
+    [ -n "$f" ] && excluded+=("$f")
+  done < <(comm -23 <(git diff --name-only "${base}..${head}" | sort) \
+                    <(git diff --name-only "${base}..${head}" -- "${paths[@]}" | sort))
+fi
+
 {
   echo "# Review package: ${base}..${head}"
   echo
@@ -56,11 +70,21 @@ fi
   echo "## Files changed"
   git diff --stat "${base}..${head}"
   echo
+  if [ ${#paths[@]} -gt 0 ]; then
+    echo "## Excluded from the diff body by pathspec (${#excluded[@]} of $((kept_count + ${#excluded[@]})) changed files)"
+    echo "Scoped to: ${paths[*]}"
+    if [ ${#excluded[@]} -gt 0 ]; then
+      echo "These files changed in the range but are NOT in the diff below. Each shows the commit(s) that touched it:"
+      for f in "${excluded[@]}"; do
+        echo "- ${f}  ($(git log --format=%h "${base}..${head}" -- "$f" | paste -sd " "))"
+      done
+    else
+      echo "(none — every changed file is in the diff body)"
+    fi
+    echo
+  fi
   echo "## Diff"
   if [ ${#paths[@]} -gt 0 ]; then
-    echo "Scoped to: ${paths[*]}"
-    echo "Files in the stat summary above but absent below were excluded from the diff body."
-    echo
     git diff -U10 "${base}..${head}" -- "${paths[@]}"
   else
     git diff -U10 "${base}..${head}"
@@ -71,11 +95,23 @@ commits=$(git rev-list --count "${base}..${head}")
 bytes=$(wc -c < "$out" | tr -d ' ')
 echo "wrote ${out}: ${commits} commit(s), ${bytes} bytes"
 
+if [ ${#paths[@]} -gt 0 ] && [ "$kept_count" -eq 0 ]; then
+  echo "WARNING: diff body is EMPTY — the pathspec matched none of the changed files. Wrong task files?" >&2
+fi
+if [ ${#excluded[@]} -gt 0 ]; then
+  echo "WARNING: ${#excluded[@]} changed file(s) fall outside the pathspec and are NOT in the diff body:" >&2
+  for f in "${excluded[@]}"; do
+    echo "  ${f}  ($(git log --format=%h "${base}..${head}" -- "$f" | paste -sd " "))" >&2
+  done
+  echo "  Any of these in the implementer's own commits (tests in a sibling __tests__/ are the usual miss) = the reviewer never sees them." >&2
+  echo "  Rescope from the commits, not the plan: $0 $plan $base $head -- \$(git show --name-only --format= <implementer shas>)" >&2
+fi
+
 if [ "$bytes" -gt 400000 ]; then
   echo "WARNING: ${bytes} bytes is too large to Read in one call." >&2
   if [ "$commits" -gt 3 ]; then
     echo "  ${commits} commits in this range — if anything else commits to this checkout, most are probably not this task's." >&2
-    echo "  Scope to the task's own files (preferred): $0 $plan $base $head -- <task files>" >&2
+    echo "  Scope to the implementer's commits (preferred): $0 $plan $base $head -- \$(git show --name-only --format= <implementer shas>)" >&2
   fi
   echo "  Or exclude a committed generated artifact: $0 $plan $base $head -- . ':(exclude)<path/to/generated.json>'" >&2
 fi

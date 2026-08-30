@@ -248,9 +248,10 @@ and an unmarked task's dispatch is judged against the wrong tier.
 - Read-only dispatches (audits, baselines, verification gates, long test
   suites) are always parallel-safe and run alongside implementers.
 - Parallel implementers interleave commits. Record each task's own BASE and
-  generate its review package scoped to its files
-  (`scripts/review-package PLAN_FILE BASE HEAD -- <task files>`) so a
-  sibling task's commits never land in its diff.
+  generate its review package scoped to the files its implementer's commits
+  touched (`scripts/review-package PLAN_FILE BASE HEAD -- $(git show
+  --name-only --format= <implementer shas>)`) so a sibling task's commits
+  never land in its diff.
 - Parallelism never merges or skips a review: each task still gets its task
   review — or its checkpoint batch — as it completes.
 
@@ -333,13 +334,21 @@ needed.
   never `HEAD~1`, which silently truncates multi-commit tasks. Never
   dispatch a task reviewer without a diff file.
 - **Share the repo with anything else that commits? Scope the package to
-  the task's files** — `scripts/review-package PLAN_FILE BASE HEAD -- <task
-  files>`. Foreign commits land between yours whenever another session,
-  agent or human works the same checkout, and `BASE..HEAD` sweeps every one
-  of them in: a package can arrive many times its real size and too large
-  to Read. This is not the parallel-dispatch case below — a strictly
-  sequential loop needs it too, because the interleaving comes from outside
-  your loop. Take the file list from the task's `files` metadata.
+  the files the implementer's commits touched** — `scripts/review-package
+  PLAN_FILE BASE HEAD -- $(git show --name-only --format= <shas from the
+  implementer's report>)`. Foreign commits land between yours whenever
+  another session, agent or human works the same checkout, and `BASE..HEAD`
+  sweeps every one of them in: a package can arrive many times its real
+  size and too large to Read. This is not the parallel-dispatch case below —
+  a strictly sequential loop needs it too, because the interleaving comes
+  from outside your loop.
+- **The pathspec comes from the commits, never from the plan's `files`
+  metadata.** A fix's test lands in a sibling `__tests__/` the metadata
+  never named; a package scoped to the metadata drops that hunk and the
+  reviewer verdicts a fix without seeing its tests. The commit's own file
+  list cannot under-scope. The script lists every dropped file (with its
+  commits) in the package and warns on stderr — a warning naming a file
+  from the implementer's shas means rescope, not dispatch.
 - When a package still spans foreign commits, say so in the dispatch and
   name the one commit that is the task's. The header's commit list covers
   the whole range even when the diff body is scoped, so a reviewer reading
