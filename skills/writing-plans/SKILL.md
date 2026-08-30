@@ -215,9 +215,11 @@ After writing the complete plan, look at the spec with fresh eyes and check the 
 
 **12. Dispatch waves:** Confirm the `## Dispatch waves` section exists, every task appears in exactly one wave, wave 1 is non-empty, and every `blockedBy` edge names something consumed (walk the edges: if you cannot say what artifact of the blocker the blocked task reads, delete the edge).
 
+**13. Quantified outcome claims (mechanical grep, then verify):** `rg -n -i '\b(all|both|exactly|only|every|never)\b[^.]{0,40}\b(tests?|reds?|greens?|redden|fail|pass)' <plan>` — every hit that predicts a test outcome (which tests redden under a mutation, how many, "both stay green") is either produced by a command the plan cites (Facts table or the step itself) or rewritten as the minimal observable signal with no count ("Shrine red under X, green under Y"). A count written from reasoning is a guess: the independent reviewer re-derives it, and a wrong one costs a full delta round. Applies with double force to text added while applying review findings — a verified fix plus an unverified summary of it is the recurring blocker shape.
+
 If you find issues, fix them inline. No need to re-review — just fix and move on. If you find a spec requirement with no task, add the task.
 
-Checks 4-6 and 10-12 are mechanical — most independent-review blockers are this class, and every one caught here is a review round saved.
+Checks 4-6 and 10-13 are mechanical — most independent-review blockers are this class, and every one caught here is a review round saved.
 
 After self-review passes, commit the plan + `.tasks.json`. Any independent review dispatch needs a committed doc — the commit sha is the review's delta base.
 
