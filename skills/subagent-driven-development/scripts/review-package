@@ -93,7 +93,8 @@ fi
 
 commits=$(git rev-list --count "${base}..${head}")
 bytes=$(wc -c < "$out" | tr -d ' ')
-echo "wrote ${out}: ${commits} commit(s), ${bytes} bytes"
+lines=$(wc -l < "$out" | tr -d ' ')
+echo "wrote ${out}: ${commits} commit(s), ${lines} lines, ${bytes} bytes"
 
 if [ ${#paths[@]} -gt 0 ] && [ "$kept_count" -eq 0 ]; then
   echo "WARNING: diff body is EMPTY — the pathspec matched none of the changed files. Wrong task files?" >&2
@@ -105,6 +106,11 @@ if [ ${#excluded[@]} -gt 0 ]; then
   done
   echo "  Any of these in the implementer's own commits (tests in a sibling __tests__/ are the usual miss) = the reviewer never sees them." >&2
   echo "  Rescope from the commits, not the plan: $0 $plan $base $head -- \$(git show --name-only --format= <implementer shas>)" >&2
+fi
+
+if [ "$lines" -gt 2000 ]; then
+  echo "WARNING: ${lines} lines exceeds the 2000-line default Read limit — a reviewer reading this in one call gets it TRUNCATED MID-HUNK with no error." >&2
+  echo "  Tell the reviewer the expected line count (${lines}) so it can detect its own truncation, and to read the changed files from disk if its read falls short." >&2
 fi
 
 if [ "$bytes" -gt 400000 ]; then
