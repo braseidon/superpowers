@@ -8,9 +8,13 @@ The SKILL.md body carries the four binding rules (dispatch at the plan's tier, o
 - `frontier` → top tier (Opus): a design choice remains, broad codebase understanding is needed, or the task sits in a domain the project's instruction file routes to its top tier.
 - Never the cheap tier (Haiku) for implementation: it routinely takes 2-3× the turns on multi-step work and costs more overall.
 
-## Effort floor (effort-pinned agent types)
+## Effort (effort-pinned agent types)
+
+**Implementers run HIGH effort at every tier. Never xhigh.** Top tier at xhigh does not implement more accurately than top tier at high, and it takes substantially longer — measured across many plan executions on this project. The reason is structural: a plan written by writing-plans carries the code, the line anchors and the verify command, so almost nothing is left to decide at edit time, and extra reasoning budget has nothing to buy. Reach for xhigh on investigation, where the difference showed up at all, and even there it was small.
 
 Mid-tier models run high effort, always. Benched at medium effort, the mid tier skipped investigation steps and conflated dispatch-prompt instructions with agent-definition instructions — dangerous, not just slow; high and xhigh were fine. Medium effort on the mid tier is for trivial transcription with a small brief, nothing else.
+
+Effort is not tier. Dropping an implementer from xhigh to high leaves `frontier` on the top tier and changes only the thinking budget, so it is not a tier re-decision and needs no ruling.
 
 ## Why tiers must not be re-decided
 
