@@ -31,4 +31,4 @@ A missing fact is not a reasoning problem: NEEDS_CONTEXT, or a BLOCKED whose cau
 
 ## Reviewer tiers
 
-Task and checkpoint reviews run on the top tier — the reviewer's job is catching what the implementer missed, and a mid-tier implementer under a top-tier reviewer is where the savings are safe; the reverse pairing is not. Scoped re-reviews (verdict named findings in a small fix diff) run on the mid tier. The final whole-branch review and fix-loop rounds 4-5 run on the top tier.
+Task and checkpoint reviews run on the top tier — the reviewer's job is catching what the implementer missed, and a mid-tier implementer under a top-tier reviewer is where the savings are safe; the reverse pairing is not. Scoped re-reviews (verdict named findings in a small fix diff) run on the mid tier. The final whole-branch review and fix-loop rounds 4-5 run on the top tier. When the project's routing names a reviewer agent, that definition hosts the contract, the effort pin and the turn cap for both the full review and the scoped re-review; the model still goes on every call.

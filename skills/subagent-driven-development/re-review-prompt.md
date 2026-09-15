@@ -4,14 +4,19 @@ Use this template when dispatching a re-review after a fix round. The
 re-reviewer verifies the findings were addressed and checks the fix diff for
 new breakage. It is not a fresh review — the full review already happened.
 
-**Purpose:** Verify each finding from the previous review was addressed, and
-that the fix itself broke nothing.
+Two shapes, as in task-reviewer-prompt.md: a project reviewer agent type
+(contract in its definition) gets the **Task** section only, by
+`subagent_type` with the model on the call; `general-purpose` gets the Task
+section plus the **Contract** section verbatim.
+
+## Task section (always)
 
 ```
-Subagent (general-purpose):
+Agent tool:
+  subagent_type: <project reviewer agent, or general-purpose>
+  model: <the re-reviewer tier's model from the project's routing — always
+         explicit; scoped re-reviews of small fix diffs take the mid tier>
   description: "Re-review Task N fix round R"
-  model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
-         model silently inherits the session's most expensive one]
   prompt: |
     You are re-reviewing one task's fix round. A previous review produced
     findings; an implementer has attempted to fix them. Your job is to
@@ -33,7 +38,11 @@ Subagent (general-purpose):
     **Fix base:** [FIX_BASE_SHA] (the head the previous review saw)
     **Head:** [HEAD_SHA]
     **Diff file:** [DIFF_FILE]
+```
 
+## Contract section (only when the agent definition does not carry it)
+
+```
     Read the diff file once — it contains the fix commits, a stat summary,
     and the fix diff with surrounding context. Do not re-run git commands.
     If the diff file is missing, fetch the diff yourself:
@@ -101,8 +110,6 @@ Subagent (general-purpose):
 ```
 
 **Placeholders:**
-- `[MODEL]` — REQUIRED: reviewer model per SKILL.md Model Selection; scoped
-  re-reviews of small fix diffs take a cheap-to-mid tier
 - `[BRIEF_FILE]` — the task brief file (same file the implementer worked from)
 - `[FINDINGS]` — the Critical/Important findings and spec gaps from the
   previous review, copied verbatim, one per bullet

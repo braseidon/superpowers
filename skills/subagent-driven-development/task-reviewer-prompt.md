@@ -1,22 +1,20 @@
 # Task Reviewer Prompt Template
 
-Use this template when dispatching a task reviewer subagent. The reviewer
-reads the task's diff once and returns two verdicts: spec compliance and
-code quality.
+Two shapes. The project's routing names a reviewer agent type (e.g. `plan-reviewer`, whose definition carries the contract below) → dispatch it by `subagent_type` with the model on the call and send only the **Task** section. No such agent → `general-purpose` with the Task section plus the **Contract** section verbatim.
 
-**Purpose:** Verify one task's implementation matches its requirements (nothing
-more, nothing less) and is well-built (clean, tested, maintainable)
+The reviewer reads the task's diff once and returns two verdicts: spec compliance and code quality. This is a task-scoped gate, not a merge review — a broad whole-branch review happens separately after all tasks are complete.
+
+## Task section (always)
 
 ```
-Subagent (general-purpose):
+Agent tool:
+  subagent_type: <project reviewer agent, or general-purpose>
+  model: <the reviewer tier's model from the project's routing — always explicit;
+         an omitted model silently inherits the session's most expensive one>
   description: "Review Task N (spec + quality)"
-  model: [MODEL — REQUIRED: choose per SKILL.md Model Selection; an omitted
-         model silently inherits the session's most expensive one]
   prompt: |
-    You are reviewing one task's implementation: first whether it matches its
-    requirements, then whether it is well-built. This is a task-scoped gate,
-    not a merge review — a broad whole-branch review happens separately after
-    all tasks are complete.
+    Full review of Task N: [task name] — spec compliance first, then code
+    quality.
 
     ## What Was Requested
 
@@ -34,7 +32,11 @@ Subagent (general-purpose):
     **Base:** [BASE_SHA]
     **Head:** [HEAD_SHA]
     **Diff file:** [DIFF_FILE]
+```
 
+## Contract section (only when the agent definition does not carry it)
+
+```
     Read the diff file once — it contains the commit list, a stat summary,
     and the full diff with surrounding context, and it is your view of the
     change. The diff's context lines ARE the changed files: do not Read a
@@ -112,12 +114,6 @@ Subagent (general-purpose):
     unchanged code or spans tasks), report it as a ⚠️ item instead of
     broadening your search.
 
-    If the brief lists several files each with its own change (a batched
-    dispatch), check the diff against that list file by file: every listed
-    file must have its corresponding hunk. A listed file the diff never
-    touches is a Missing finding, no matter how clean the rest of the
-    batch looks.
-
     ## Part 2: Code Quality
 
     **Code quality:**
@@ -194,13 +190,12 @@ Subagent (general-purpose):
 ```
 
 **Placeholders:**
-- `[MODEL]` — REQUIRED: reviewer model per SKILL.md Model Selection
 - `[BRIEF_FILE]` — REQUIRED: the task brief file (`scripts/task-brief PLAN N`
   prints the path; same file the implementer worked from)
 - `[GLOBAL_CONSTRAINTS]` — the binding requirements copied verbatim from
   the plan's Global Constraints section or the spec: exact values, formats,
   and stated relationships between components (not process rules — those
-  are already in this template)
+  are already in the contract)
 - `[REPORT_FILE]` — REQUIRED: the file the implementer wrote its detailed
   report to
 - `[BASE_SHA]` — commit before this task

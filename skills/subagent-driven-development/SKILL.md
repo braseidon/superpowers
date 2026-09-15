@@ -38,7 +38,7 @@ Execute a plan by dispatching a fresh subagent per task, with a two-stage review
 - Tier → model, effort and agent type come from the project's routing (routing file or instruction file); defaults when it names none, the effort floor, and the reasoning: [references/model-selection.md](references/model-selection.md). A project implementer agent (contract, effort pin, turn cap in its definition) is dispatched by `subagent_type`, model on the call, brief = the task only; none → `general-purpose` + full template. Never the cheap tier (Haiku) for implementation; mid tier at medium effort only for trivial transcription.
 - **A partial return (turn cap) is not DONE:** resume with "continue from where you stopped" (transcript intact; the partial text may lag), re-brief, or bump.
 - **One bump, no retry.** A mid-tier implementer stuck on REASONING (BLOCKED, or DONE_WITH_CONCERNS about correctness, with the context it needed in hand) → FRESH dispatch on the top tier with brief path, report-file path, concerns verbatim; never a second mid-tier attempt. A missing fact (NEEDS_CONTEXT, or a BLOCKED your context answers) gets the answer and a resume of the same agent — the bump only if it sticks again.
-- **Reviewers:** task/checkpoint reviews, fix rounds 4-5, final whole-branch review → top tier. Scoped re-reviews → mid tier.
+- **Reviewers:** task/checkpoint reviews, fix rounds 4-5, final whole-branch review → top tier. Scoped re-reviews → mid tier. Project reviewer agent named by the routing → `subagent_type`, model on the call, prompt = inputs only; none → `general-purpose` + full template.
 - **Always name the model explicitly on every dispatch** — an omitted model inherits your session's, usually the most expensive.
 
 ## The Task Loop
@@ -54,7 +54,7 @@ Everything pasted into a dispatch prompt, and everything a subagent prints back,
 - Per implementer, record BASE (`git rev-parse HEAD`) before dispatching — review packages and fix-round diffs need it. Parallel implementers interleave commits; each task's package is scoped to its own commits' files (§3).
 - **Task brief:** `scripts/task-brief PLAN_FILE N` extracts the task text to a uniquely named file and prints the path — the single source of requirements. The dispatch carries: (1) one line on where the task fits; (2) the brief path, introduced as "read this first — it is your requirements, with the exact values to use verbatim"; (3) interfaces and decisions from earlier tasks the brief cannot know; (4) your resolution of any ambiguity you noticed; (5) the report-file path and report contract. Exact values (numbers, magic strings, signatures, test cases) appear only in the brief. Never make a subagent read the whole plan.
 - **Report file:** named after the brief (`…/task-N-brief.md` → `…/task-N-report.md`), in the dispatch. The implementer writes the full report there and returns only status, commits, a one-line test summary, and concerns.
-- A dispatch describes one task, not the session's history — no "state after Tasks 1-3" summaries. Task, interfaces it touches, global constraints. Nothing else.
+- A dispatch describes one task, never the session's history ("state after Tasks 1-3"): task, interfaces it touches, global constraints.
 - An earlier task parked a finding in this task's area? Carry a pointer to that ledger entry.
 - Record the implementer's agent identity — fix rounds 1-3 resume it.
 
@@ -67,7 +67,7 @@ Template: [implementer-prompt.md](implementer-prompt.md)
 - **NEEDS_CONTEXT:** provide the missing context and re-dispatch.
 - **BLOCKED:** context problem → more context, same model; reasoning problem → fresh dispatch on a more capable model (one bump, Model Selection); too large → split; plan wrong → escalate to the human.
 
-Never ignore an escalation or force the same model to retry unchanged. Implementer questions, before or mid-task, get clear complete answers — don't rush it.
+Never ignore an escalation or force the same model to retry unchanged; implementer questions, before or mid-task, get clear, complete answers.
 
 **Escalating to your human partner** — before ANY execution-time AskUserQuestion, plan-scripted or relayed: (1) re-read the plan header's "User decisions (already made)" — a recorded decision answers it, don't ask; (2) if you do ask, name the artifact AND its role/state from the plan's facts, and make each option say what changes and what stays — an unanchored recommendation reads as a new proposal to someone who does not hold the plan in their head.
 
