@@ -41,6 +41,18 @@ PURGE=(
   tests/kimi
   tests/opencode
   tests/pi
+  commands/brainstorm.md
+  commands/execute-plan.md
+  commands/write-plan.md
+  commands/gate-check.md
+  commands/specify-gate.md
+  skills/checking-gates
+  skills/specifying-gates
+  docs/user-gate-flow.md
+  hooks/examples/post-task-complete-revalidate.sh
+  hooks/examples/stop-revalidate-user-gates.sh
+  hooks/examples/post-agent-return-validate.sh
+  tests/claude-code/test-user-gate-hooks.sh
 )
 
 OURS_PINNED=(

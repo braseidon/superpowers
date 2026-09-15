@@ -30,7 +30,6 @@ Execute a plan by dispatching a fresh subagent per task, with a two-stage review
 
 1. Read the task's description via TaskGet — metadata is a `json:metadata` fence at the end.
 2. Map its fields (files, acceptanceCriteria, verifyCommand, modelTier) to the implementer prompt sections. The implementer receives ALL structured data — never make it parse prose.
-3. User-gate tasks: dispatch the settled verification as written. Re-asking a settled approach with no changed condition (different fixture/branch, new blocker, broken plan assumption) is walking around the gate.
 
 ## Model Selection
 
@@ -117,7 +116,7 @@ Review clean, or every open finding parked with a ruling at the cap → ledger, 
 - `Task <N>: complete (commits <base7>..<head7>, review clean)`
 - `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after a tripped breaker
 
-Then TaskUpdate completed, and in the same call shrink the description to its **Goal:** line plus `Complete — see ledger.` — the harness re-injects every task's full description on periodic reminders; the details survive in the plan, the brief, and `.tasks.json`. Exception: `userGate: true` metadata or a `user-gate` tag keeps the full description (completion-revalidation hooks read it). Then sync `<plan-path>.tasks.json`: `"status"` → `"completed"`, `"lastUpdated"` → current ISO timestamp — without it a new session sees the task as pending.
+Then TaskUpdate completed, and in the same call shrink the description to its **Goal:** line plus `Complete — see ledger.` — the harness re-injects every task's full description on periodic reminders; the details survive in the plan, the brief, and `.tasks.json`. Then sync `<plan-path>.tasks.json`: `"status"` → `"completed"`, `"lastUpdated"` → current ISO timestamp — without it a new session sees the task as pending.
 
 Never move on while Critical/Important issues are neither fixed nor parked-with-ruling at the cap.
 
