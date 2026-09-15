@@ -133,7 +133,7 @@ FIELDS=$(echo "$INPUT" | jq -r '[(.tool_name // ""), (.tool_input.model // ""), 
 # can hold an agent definition here - this plugin deliberately ships NO named
 # agents (precedent: commit 8d9d82b removed the last one and the agents/ dir
 # with it). The effort-pinned definitions that make enforceEffort usable are
-# written into one of these two paths by /onboard when the user opts in, which
+# written into one of these two paths by the user when they opt in, which
 # keeps them behind the opt-in instead of costing every install unconditionally.
 # A third <plugin_root>/agents/ path was tried and removed: with nothing shipped
 # there it could never resolve, so it was dead code by construction.
@@ -502,8 +502,8 @@ if [[ "$ENFORCE_EFFORT" == "true" && -n "$TIERS_CSV" ]]; then
                 echo "The Agent tool has no effort parameter, so effort comes from the"
                 echo "agent definition named by subagent_type. Dispatch through an"
                 echo "effort-pinned agent type whose frontmatter pins the required"
-                echo "effort. Enabling enforcement via /onboard writes effort-low,"
-                echo "effort-medium and effort-high into .claude/agents/ for exactly"
+                echo "effort. Enabling enforcement means effort-low, effort-medium and"
+                echo "effort-high are written by the user into .claude/agents/ for exactly"
                 echo "this; they pin no model, so keep passing the model parameter"
                 echo "as usual. Any agent definition of your own works too - it just"
                 echo "needs an 'effort:' key in its frontmatter."

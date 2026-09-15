@@ -69,17 +69,7 @@ This fork integrates Claude Code-native features into the Superpowers workflow.
 
 Alternatively, install directly from the repository URL: `/plugin install --source url https://github.com/pcvelz/superpowers.git`
 
-### Automatic Setup (recommended)
-
-```
-/superpowers:onboard
-```
-
-It turns the native task tools back on (required on Claude Code 2.1.233+), can enable marketplace auto-update, and walks you through the optional features (model routing, commit strategy). One scope choice governs every write.
-
-### Manual Setup
-
-Everything the onboarding configures can also be set up by hand. The one required step:
+### Setup
 
 **Turn the task tools back on (required on Claude Code 2.1.233+).** Claude Code 2.1.233 removed the task tools by default, and this plugin is built on them. Add this to `~/.claude/settings.json` (all projects) or `<project>/.claude/settings.json`:
 
@@ -93,19 +83,15 @@ The optional features are documented in their own sections below.
 
 1. **brainstorming** - Activates before writing code. Refines rough ideas through questions, explores alternatives, presents design in sections for validation. Saves design document.
 
-2. **using-git-worktrees** - Activates after design approval. Creates isolated workspace on new branch, runs project setup, verifies clean test baseline.
+2. **writing-plans** - Activates with approved design. Breaks work into bite-sized tasks (2-5 minutes each). Every task has exact file paths, complete code, verification steps. *Creates native tasks with dependencies.*
 
-3. **writing-plans** - Activates with approved design. Breaks work into bite-sized tasks (2-5 minutes each). Every task has exact file paths, complete code, verification steps. *Creates native tasks with dependencies.*
-
-4. **subagent-driven-development** or **executing-plans** - Activates with plan. Dispatches fresh subagent per task with two-stage review (spec compliance, then code quality), or executes in batches with human checkpoints.
+3. **subagent-driven-development** or **executing-plans** - Activates with plan. Dispatches fresh subagent per task with two-stage review (spec compliance, then code quality), or executes in batches with human checkpoints.
 
    **Architect pattern (new):** when executing in a separate session, that session can message the plan-writing session via Claude Code's agent chat (`ListAgents` + `SendMessage`). The plan session acts as the architect and answers design questions, while executors work with a focused context. This makes `write-plan` useful for offloading side tasks from a long-running session without losing its knowledge.
 
-5. **test-driven-development** - Activates during implementation. Enforces RED-GREEN-REFACTOR: write failing test, watch it fail, write minimal code, watch it pass, commit. Deletes code written before tests.
+4. **test-driven-development** - Activates during implementation. Enforces RED-GREEN-REFACTOR: write failing test, watch it fail, write minimal code, watch it pass, commit. Deletes code written before tests.
 
-6. **requesting-code-review** - Activates between tasks. Reviews against plan, reports issues by severity. Critical issues block progress.
-
-7. **finishing-a-development-branch** - Activates when tasks complete. Verifies tests, presents options (merge/PR/keep/discard), cleans up worktree.
+5. **requesting-code-review** - Activates between tasks. Reviews against plan, reports issues by severity. Critical issues block progress.
 
 **The agent checks for relevant skills before any task.** Mandatory workflows, not suggestions.
 
@@ -174,8 +160,6 @@ Tiers are abstract on purpose — plans survive model generations; the routing f
 
 ### Setup
 
-Prefer a guided setup? Run `/superpowers:onboard` — it asks one multiple-choice question per optional feature and writes the files for you. Manual setup below achieves exactly the same.
-
 Create `docs/superpowers/model-routing.json` in your project:
 
 ```json
@@ -228,7 +212,6 @@ When `at-end` is set, a notice injected at session start instructs the agent to:
 
 Setup notes:
 
-- Prefer a guided setup? Run `/superpowers:onboard` — it covers this feature alongside the other optional flows.
 - Valid values are `"per-task"` (the default) and `"at-end"`; anything else falls back to per-task.
 - **User-level default:** the file may instead live at `~/.claude/superpowers/workflow.json`, applying to every project that has no project-level file. Lookup is project first, then user — the first file found wins entirely (no merging). A project file of `{"commitStrategy": "per-task"}` restores per-task commits for that project while a user-level default exists.
 - The plan-time side is enforced: a TaskCreate gate blocks plan tasks that carry per-task commit steps while `at-end` is configured (fail-open, kill switch `SUPERPOWERS_WORKFLOW_GUARD=0`). Dispatch-time stays advisory, and the notice takes effect from the next session on (see the design doc for this boundary).
@@ -254,8 +237,6 @@ Setup notes:
 - **dispatching-parallel-agents** - Concurrent subagent workflows
 - **requesting-code-review** - Pre-review checklist
 - **receiving-code-review** - Responding to feedback
-- **using-git-worktrees** - Parallel development branches
-- **finishing-a-development-branch** - Merge/PR decision workflow
 - **subagent-driven-development** - Fast iteration with two-stage review (spec compliance, then code quality)
 
 **Meta**

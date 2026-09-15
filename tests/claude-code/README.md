@@ -115,21 +115,6 @@ Full workflow execution test (~10-30 minutes):
 - Subagents follow the skill correctly
 - Final code is functional and tested
 
-#### test-worktree-native-preference.sh
-RED-GREEN-REFACTOR validation for the using-git-worktrees skill (~5 minutes):
-- RED: skill without Step 1a — agent should use `git worktree add`
-- GREEN: skill with Step 1a — agent should use the native EnterWorktree tool
-- PRESSURE: same as GREEN under urgency framing with pre-existing `.worktrees/`
-- Drill scenario `worktree-creation-under-pressure.yaml` covers the PRESSURE phase only
-
-#### test-worktree-opt-in.sh
-RED-GREEN validation that worktrees are opt-in (~3 minutes per phase, headless Claude):
-- RED: worktree-by-default skill text — agent asks for consent or recommends a worktree
-- GREEN: opt-in skill text, nobody asked — agent works in place, no worktree, no prompt
-- REQUESTED: opt-in skill text, human partner asked in so many words — agent still sets one up
-- IMPLEMENTER-RED / IMPLEMENTER-GREEN: an implementer asked for a before/after delta with no baseline and stash blocked — unguided it manufactures a before-state (throwaway worktree or in-place revert); with the implementer-prompt `Work from:` paragraph it reports the absolute count and says no baseline exists
-- Static assertions for the same policy live in `test-worktree-path-policy.sh` (fast suite)
-
 ## Adding New Tests
 
 1. Create new test file: `test-<skill-name>.sh`

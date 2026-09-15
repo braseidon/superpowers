@@ -36,11 +36,7 @@ Update `.tasks.json` after every task status change.
 
 ### Step 0.5: Settle the Workspace
 
-Worktrees are opt-in — created only when your human partner asked for one (conversation, instruction file, or the plan). **REQUIRED SUB-SKILL:** `superpowers:using-git-worktrees` — its Step 0 decides:
-
-1. `git worktree list` shows one for this plan's branch, or you are already inside a linked worktree: **cd into / stay in it — do NOT create another**
-2. Isolation was requested and none exists: the skill creates one
-3. Nothing was requested: work in place in the current checkout on the current branch — no worktree, no consent prompt
+Work in place in the current checkout.
 
 ### Step 1: Load and Review Plan
 1. Read plan file
@@ -73,9 +69,7 @@ For each task:
 
 ### Step 3: Complete Development
 
-After all tasks complete and verified:
-- **REQUIRED SUB-SKILL:** Use superpowers:finishing-a-development-branch
-- Follow that skill to verify tests, present options, execute choice
+After all tasks complete and verified, the work is committed and the plan is done.
 
 ## When to Stop and Ask for Help
 
@@ -106,6 +100,4 @@ After all tasks complete and verified:
 ## Integration
 
 **Required workflow skills:**
-- **superpowers:using-git-worktrees** - Settles the workspace (in place by default; worktree only when requested)
 - **superpowers:writing-plans** - Creates the plan this skill executes
-- **superpowers:finishing-a-development-branch** - Complete development after all tasks

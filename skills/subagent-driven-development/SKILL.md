@@ -19,7 +19,7 @@ Execute a plan by dispatching a fresh subagent per task, with a two-stage review
 
 ## Setup
 
-- Settle the workspace with superpowers:using-git-worktrees — worktrees are opt-in (only when your human partner asked, in conversation, an instruction file, or the plan); otherwise work in the current checkout with no consent prompt. Never implement on main/master without that same consent.
+- Work in place in the current checkout. Never implement on main/master without your human partner's consent.
 - Each plan owns a workspace: run this skill's `scripts/sdd-workspace PLAN_FILE` — it prints the plan's git-ignored directory (`<repo-root>/.superpowers/sdd/<plan-basename>/`), home to every artifact for THIS plan: ledger, briefs, reports, review packages. Another plan's directory is never yours to read or write.
 - **The ledger (`<workspace>/progress.md`) is your recovery map** — conversation memory does not survive compaction; after one, trust the ledger and `git log` over recollection. Check for it first: first line names your plan file → tasks with a `Task <N>: complete` line are DONE, resume at the first without one; a task whose last line is a fix round resumes at the next round. First line names another plan (or a stray ledger at the old flat path `.superpowers/sdd/progress.md`) → leave it, start your own with `# SDD ledger — plan: <plan file path>` as line 1. `git clean -fdx` destroys the workspace; recover from `git log`.
 - **The ledger records STATE, not reasoning.** One event, one line, in the forms this skill names (dispatch, fix round, complete, minor, parked, ruling, BLOCKED); only a parked ruling may run to three. Every decision taken on your human partner's behalf — a plan contradiction resolved from the header's recorded decisions, a tier correction, a breaker adjudication — is a `Task <N>: ruling — <what> — <why> — <cost if wrong>` line. No narration, praise, self-correction essays, or restated facts — every line is re-read every later turn. Process lessons go in your final report: the workspace is deleted at Finish.
@@ -124,13 +124,13 @@ Never move on while Critical/Important issues are neither fixed nor parked-with-
 
 `scripts/review-package PLAN_FILE MERGE_BASE HEAD` (MERGE_BASE = where the branch started, e.g. `git merge-base main HEAD`); dispatch superpowers:requesting-code-review's [code-reviewer.md](../requesting-code-review/code-reviewer.md) on the most capable model with the printed path, pointed at the ledger's deferred-minor and parked lines to triage what must be fixed before merge.
 
-Findings → **ONE fix subagent with the complete list**, then exactly one scoped re-review of the fix range (`review-package PLAN_FILE FIX_BASE HEAD`, re-review-prompt.md). Adjudicate residuals as in the breaker. **No second fix wave** — residual load-bearing findings surface when finishing-a-development-branch presents the options.
+Findings → **ONE fix subagent with the complete list**, then exactly one scoped re-review of the fix range (`review-package PLAN_FILE FIX_BASE HEAD`, re-review-prompt.md). Adjudicate residuals as in the breaker. **No second fix wave** — residual load-bearing findings are reported to your human partner at Finish.
 
 ## Finish
 
 Before deleting anything, collect every ledger `ruling` and `parked` line — preflight rulings, tier corrections, parked findings, breaker adjudications — into your final message under **"Rulings I made"**, in order, each with its cost if wrong. Exhaustive: the ledger holds it, the list holds it. It is the only place your decisions on your partner's behalf reach them; a ruling that dies with the workspace was made in secret.
 
-Final review clean and fixes merged → `rm -rf <workspace>`; git history is the record. Sibling directories belong to other plans. Then superpowers:finishing-a-development-branch.
+Final review clean and fixes merged → `rm -rf <workspace>`; git history is the record. Sibling directories belong to other plans.
 
 ## Common Rationalizations
 

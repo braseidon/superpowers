@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # End-to-end: "a certain model runs at a certain thinking level" is enforced.
 #
-# This drives the exact artifacts /onboard writes when the user picks "Pin and
+# This drives the exact artifacts written by the user when they pick "Pin and
 # enforce": a routing file carrying "enforceEffort": true, plus effort-low /
 # effort-medium / effort-high agent definitions in the scope's .claude/agents/.
 # The plugin itself ships NO named agents (precedent: commit 8d9d82b), so these
-# are created here the same way onboarding creates them - keeping the definitions
+# are created here the same way the user creates them - keeping the definitions
 # behind the opt-in instead of costing every install unconditionally.
 #
 # Complements test-effort-routing-hook.sh, which covers the decision branches
@@ -22,14 +22,14 @@ FAILED=0
 # shellcheck disable=SC2064
 trap "rm -rf '$WORK'" EXIT
 
-echo "=== Test: effort enforcement end-to-end (onboarding-written artifacts) ==="
+echo "=== Test: effort enforcement end-to-end (user-written artifacts) ==="
 echo ""
 
 mkdir -p "$WORK/project/docs/superpowers" "$WORK/home/.claude/agents"
 printf '%s\n' '{"mechanical":"haiku","standard":"sonnet","frontier":"inherit","effort":{"mechanical":"low","standard":"medium","frontier":"inherit"},"enforceEffort":true}' \
     > "$WORK/project/docs/superpowers/model-routing.json"
 
-# The three definitions /onboard writes. No model: key by design - the model
+# The three definitions written by the user. No model: key by design - the model
 # travels on the Agent call and is enforced separately, so the dials stay
 # independent. Body kept minimal; only the frontmatter is under test here.
 for lvl in low medium high; do
@@ -103,7 +103,7 @@ assert "haiku, no subagent_type -> block" "2" "$(run "" haiku)"
 assert_stderr_contains "block points at an effort-pinned agent type" "effort-pinned agent type"
 echo ""
 
-echo "Test 5: definitions resolve from the scope /onboard writes to"
+echo "Test 5: definitions resolve from the scope the user writes to"
 # If the user-level lookup regressed, effort would resolve to nothing and Test 1
 # would block. Asserting it explicitly keeps the cause legible.
 assert "user-level .claude/agents definition resolves -> allow" "0" "$(run effort-low haiku)"

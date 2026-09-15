@@ -71,7 +71,7 @@ if [ -f "$routing_file" ]; then
     # compare in the shell.
     enforce_effort=$(printf '%s' "$routing_mapping" | sed -n 's/.*"enforceEffort"[[:space:]]*:[[:space:]]*\([a-z]*\).*/\1/p')
     if [ "$enforce_effort" = "true" ]; then
-        effort_enforcement="ENFORCED: the dispatch gate resolves the effort your subagent_type pins (agent-definition frontmatter \`effort:\`) and blocks a dispatch that does not match the tier's effort. The Agent tool has no effort parameter, so route through an effort-pinned agent type — /onboard writes \`effort-low\`, \`effort-medium\` and \`effort-high\` into .claude/agents/ when enforcement is enabled, and they pin no model, so keep passing the model parameter as usual. Any agent definition carrying an \`effort:\` key works. Note that with enforcement on, such definitions also have their model parameter checked against the tier — an exemption they keep while enforcement is off."
+        effort_enforcement="ENFORCED: the dispatch gate resolves the effort your subagent_type pins (agent-definition frontmatter \`effort:\`) and blocks a dispatch that does not match the tier's effort. The Agent tool has no effort parameter, so route through an effort-pinned agent type — \`effort-low\`, \`effort-medium\` and \`effort-high\` are written by the user into .claude/agents/ when enforcement is enabled, and they pin no model, so keep passing the model parameter as usual. Any agent definition carrying an \`effort:\` key works. Note that with enforcement on, such definitions also have their model parameter checked against the tier — an exemption they keep while enforcement is off."
     else
         effort_enforcement="Advisory only; no gate enforces effort unless the routing file sets \"enforceEffort\": true."
     fi

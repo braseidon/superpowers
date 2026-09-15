@@ -150,19 +150,6 @@ fi
 
 echo ""
 
-# Test 8: Verify worktree requirement
-echo "Test 8: Worktree requirement..."
-
-output=$(run_claude "What workflow skills are required before using subagent-driven-development? List any prerequisites or required skills." "$CLAUDE_PROMPT_TIMEOUT")
-
-if assert_contains "$output" "using-git-worktrees\|worktree" "Mentions worktree requirement"; then
-    : # pass
-else
-    exit 1
-fi
-
-echo ""
-
 # Test 9: Verify main branch warning
 echo "Test 9: Main branch red flag..."
 

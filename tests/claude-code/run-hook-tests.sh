@@ -8,8 +8,7 @@
 #
 # Deliberately NOT included (they hang or shell out to the CLI):
 #   test-subagent-driven-development.sh, test-sdd-workspace.sh,
-#   test-fork-validation.sh, test-worktree-native-preference.sh,
-#   test-worktree-path-policy.sh, test-effort-enforcement-e2e.sh,
+#   test-fork-validation.sh, test-effort-enforcement-e2e.sh,
 #   test-subagent-driven-development-integration.sh
 # Run those by hand or via run-skill-tests.sh.
 #

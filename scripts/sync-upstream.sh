@@ -53,6 +53,14 @@ PURGE=(
   hooks/examples/stop-revalidate-user-gates.sh
   hooks/examples/post-agent-return-validate.sh
   tests/claude-code/test-user-gate-hooks.sh
+  skills/using-git-worktrees
+  skills/finishing-a-development-branch
+  commands/onboard.md
+  hooks/check-onboard-drift
+  hooks/onboard-features.json
+  tests/claude-code/test-worktree-path-policy.sh
+  tests/claude-code/test-worktree-opt-in.sh
+  tests/claude-code/test-worktree-native-preference.sh
 )
 
 OURS_PINNED=(

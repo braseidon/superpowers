@@ -413,7 +413,7 @@ echo "Test 8: plugin-scoped subagent_type resolves NOWHERE - the plugin ships no
 # Guard against re-adding a <plugin_root>/agents/ lookup. This plugin ships no
 # named agents (precedent: commit 8d9d82b removed the last one and the agents/
 # directory with it), and the effort definitions that make enforcement usable
-# are written by /onboard into <cwd>/.claude/agents or ~/.claude/agents - the
+# are written by the user into <cwd>/.claude/agents or ~/.claude/agents - the
 # two paths resolve_agent_key already searched before this feature existed.
 #
 # A third plugin-root path was tried and removed: with nothing shipped there it
@@ -456,7 +456,7 @@ assert "exit code" "0" "$rc"
 echo ""
 
 echo "Test 12: effort-only definition (no model:) + explicit model param that VIOLATES the tier -> BLOCK"
-# worker-eta pins effort: medium and NO model: key - the same shape /onboard
+# worker-eta pins effort: medium and NO model: key - the same shape the user
 # writes for effort-low/medium/high, and the same shape any user definition
 # carrying a bare effort: key has. Dispatched WITH an explicit model param
 # ("opus") that is outside the mechanical tier's allowed set {haiku, sonnet}.

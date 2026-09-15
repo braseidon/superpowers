@@ -17,8 +17,6 @@ domain — the plan is their only input. Document which files each task touches,
 the code, the tests, the docs to check, and how to verify. Bite-sized tasks.
 DRY. YAGNI. TDD. Frequent commits.
 
-**Context:** If working in an isolated worktree, it should have been created via the `superpowers:using-git-worktrees` skill at execution time.
-
 **Save plans to:** `docs/superpowers/plans/YYYY-MM-DD-<feature-name>.md`
 - (User preferences for plan location override this default)
 
