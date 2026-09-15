@@ -35,9 +35,9 @@ Execute a plan by dispatching a fresh subagent per task, with a two-stage review
 
 - **Dispatch the implementer at the plan's `modelTier` (`mechanical` | `standard` | `frontier`). Do not re-decide.** A tier is wrong only when the brief contradicts it (a `mechanical` task with a design choice left open): ledger `Task <N>: ruling — tier mechanical→frontier — <why>` and dispatch at the corrected tier.
 - Tier → model, effort and agent type come from the project's routing (routing file or instruction file); defaults when it names none, the effort floor, and the reasoning: [references/model-selection.md](references/model-selection.md). A project implementer agent (contract, effort pin, turn cap in its definition) is dispatched by `subagent_type`, model on the call, brief = the task only; none → `general-purpose` + full template. Never the cheap tier (Haiku) for implementation; mid tier at medium effort only for trivial transcription.
-- **A partial return (turn cap) is not DONE:** re-brief a fresh implementer with the brief path, the report file and "check `git status` first; a prior implementer's edits are on disk", or bump. Never resume it: a resume replays the whole transcript per turn, and an agent at its cap is past the resume gate below.
-- **Resume gate:** resume an agent (fix rounds, mid-flight corrections) only when its Agent result reported under 150k tokens AND it stopped short of its turn cap. Past either line, dispatch fresh; the report file and review file are the memory.
-- **One bump, no retry.** A mid-tier implementer stuck on REASONING (BLOCKED, or DONE_WITH_CONCERNS about correctness, with the context it needed in hand) → FRESH dispatch on the top tier with brief path, report-file path, concerns verbatim; never a second mid-tier attempt. A missing fact (NEEDS_CONTEXT, or a BLOCKED your context answers) gets the answer and a resume of the same agent when it passes the resume gate above (else a fresh dispatch at the same tier with the answer, brief path and report-file path) — the bump only if it sticks again.
+- **Resume gate:** resume an agent (fix rounds, mid-flight corrections, answered questions) only when its Agent result reported under 150k tokens AND it stopped short of its turn cap. Past either line, dispatch fresh; the report file and review file are the memory. A resume replays the whole transcript per turn.
+- **A partial return (turn cap) is not DONE** and is past the gate: re-brief a fresh implementer with the brief path, the report file and "check `git status` first; a prior implementer's edits are on disk", or bump.
+- **One bump, no retry.** A mid-tier implementer stuck on REASONING (BLOCKED, or DONE_WITH_CONCERNS about correctness, with the context it needed in hand) → FRESH dispatch on the top tier with brief path, report-file path, concerns verbatim; never a second mid-tier attempt. A missing fact (NEEDS_CONTEXT, or a BLOCKED your context answers) gets the answer, resumed under the gate or fresh at the same tier; the bump only if it sticks again.
 - **Reviewers:** task/checkpoint reviews, fix rounds 4-5, final whole-branch review → top tier. Scoped re-reviews → mid tier. Project reviewer agent named by the routing → `subagent_type`, model on the call, prompt = inputs only; none → `general-purpose` + full template.
 - **Always name the model explicitly on every dispatch** — an omitted model inherits your session's, usually the most expensive.
 
@@ -49,7 +49,7 @@ Everything pasted into a dispatch prompt, and everything a subagent prints back,
 
 **The unit of dispatch is the frontier, not the next task.** Before every dispatch message compute it: every pending task whose `blockedBy` are all complete AND whose `files` share no path with any task in progress or in the same message. Dispatch the whole frontier in ONE message, every implementer in the background, and keep coordinating. Mark each task `in_progress` BEFORE its dispatch — routing gates resolve a dispatch against the in-progress set.
 
-- `files` metadata IS the disjointness test. Overlap serializes; uncertainty serializes; an empty or visibly incomplete `files` list is not parallel-safe. Serial is the fallback for overlap, never the default — independent tasks run one after another is wall-clock you chose to burn. Never two writers on one file; that is the whole parallelism rule ("one implementer at a time" is not it).
+- `files` metadata IS the disjointness test. Overlap serializes; uncertainty serializes; an empty or visibly incomplete `files` list is not parallel-safe. Serial is the fallback for overlap, never the default. Never two writers on one file; that is the whole parallelism rule.
 - Read-only dispatches (audits, baselines, verification gates, long suites) are always parallel-safe.
 - Per implementer, record BASE (`git rev-parse HEAD`) before dispatching — review packages and fix-round diffs need it. Parallel implementers interleave commits; each task's package is scoped to its own commits' files (§3).
 - **Task brief:** `scripts/task-brief PLAN_FILE N` extracts the task text to a uniquely named file and prints the path — the single source of requirements. The dispatch carries: (1) one line on where the task fits; (2) the brief path, introduced as "read this first — it is your requirements, with the exact values to use verbatim"; (3) interfaces and decisions from earlier tasks the brief cannot know; (4) your resolution of any ambiguity you noticed; (5) the report-file path and report contract. Exact values (numbers, magic strings, signatures, test cases) appear only in the brief. Never make a subagent read the whole plan.
@@ -63,12 +63,10 @@ Template: [implementer-prompt.md](implementer-prompt.md)
 
 ### 2. Handle the report
 
-- **DONE:** generate the review package (§3) and dispatch the task reviewer. Generate it only after the report lands — a pre-generated package is stale.
+- **DONE:** generate the review package (§3) after the report lands, then dispatch the task reviewer.
 - **DONE_WITH_CONCERNS:** read the concerns. Correctness or scope → address before review, by resume under the resume gate or a fresh same-tier dispatch carrying your ruling and the report-file path; observations ("this file is getting large") → note and proceed.
 - **NEEDS_CONTEXT:** provide the missing context and re-dispatch.
 - **BLOCKED:** context problem → more context, same model; reasoning problem → fresh dispatch on a more capable model (one bump, Model Selection); too large → split; plan wrong → escalate to the human.
-
-Never ignore an escalation or force the same model to retry unchanged; implementer questions, before or mid-task, get clear, complete answers.
 
 **Escalating to your human partner** — before ANY execution-time AskUserQuestion, plan-scripted or relayed: (1) re-read the plan header's "User decisions (already made)" — a recorded decision answers it, don't ask; (2) if you do ask, name the artifact AND its role/state from the plan's facts, and make each option say what changes and what stays — an unanchored recommendation reads as a new proposal to someone who does not hold the plan in their head.
 
@@ -77,12 +75,12 @@ Never ignore an escalation or force the same model to retry unchanged; implement
 Per-task reviews are task-scoped gates; the broad review is at the end. Never skip one, never accept a report missing either verdict (spec compliance AND task quality); implementer self-review never replaces it.
 
 - **Hand the reviewer its diff as a file:** `scripts/review-package PLAN_FILE BASE HEAD` (from this skill's directory) prints the unique path it wrote — commit list, stat summary, full `-U10` diff, one Read, nothing in your context. Without bash: `git log --oneline` + `git diff --stat` + `git diff -U10` for the range into one uniquely named file. BASE is the commit recorded before dispatch — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task. Never dispatch a reviewer without a diff file.
-- **Share the repo with anything else that commits? Scope the package** — `scripts/review-package PLAN_FILE BASE HEAD -- $(git show --name-only --format= <shas from the implementer's report>)`. Foreign commits land between yours whenever another session, agent or human works the checkout; `BASE..HEAD` sweeps them all in. A strictly sequential loop needs this too — the interleaving comes from outside.
-- **The pathspec comes from the commits, never from the plan's `files` metadata.** A fix's test lands in a sibling `__tests__/` the metadata never named; a metadata-scoped package drops the hunk and the reviewer verdicts a fix without its tests. The script lists every dropped file (with its commits) in the package and warns on stderr — a warning naming a file from the implementer's shas means rescope, not dispatch.
+- **Share the repo with anything else that commits? Scope the package** — `scripts/review-package PLAN_FILE BASE HEAD -- $(git show --name-only --format= <shas from the implementer's report>)`. Foreign commits land between yours whenever another session, agent or human works the checkout; `BASE..HEAD` sweeps them all in, sequential loop or not.
+- **The pathspec comes from the commits, never from the plan's `files` metadata** (tests land in sibling `__tests__/` dirs the metadata never names). The script lists every dropped file (with its commits) in the package and warns on stderr — a warning naming a file from the implementer's shas means rescope, not dispatch.
 - A package that still spans foreign commits: say so in the dispatch and name the task's own commit(s) — the header's commit list covers the whole range even when the body is scoped.
 - **Reviewer inputs:** brief file, report file, review package, review file path, plus the global constraints that bind the task, copied verbatim from the plan's Global Constraints or the spec (exact values, formats, "same layout as X" relationships). That block is the reviewer's attention lens; the template carries the process rules.
 - No open-ended directives ("check all uses") without a concrete task-specific reason. No re-running tests the implementer already ran on the same code — the report carries the evidence.
-- **Never pre-judge findings.** Never tell a reviewer to ignore or not flag an issue; let it raise the finding and adjudicate in the loop. "Do not flag", "don't treat X as a defect", "at most Minor", "the plan chose" in your prompt = stop, you are sparing yourself a review loop.
+- **Never pre-judge findings.** Never tell a reviewer to ignore or not flag an issue; let it raise the finding and adjudicate in the loop. "Do not flag", "don't treat X as a defect", "at most Minor", "the plan chose" in your prompt = stop.
 - **"⚠️ Cannot verify from diff"** items (requirements in unchanged code or spanning tasks) don't block the review, but you resolve each yourself before completion — you hold the plan and cross-task context. A confirmed real gap is a failed spec review and enters the fix loop.
 
 Template: [task-reviewer-prompt.md](task-reviewer-prompt.md)
@@ -91,25 +89,23 @@ Template: [task-reviewer-prompt.md](task-reviewer-prompt.md)
 
 Triggers on spec ❌, any Critical or Important finding, or a confirmed ⚠️ gap. Two routes leave it immediately:
 
-- **Minor findings** go to the ledger (`Task <N>: minor (deferred): <one-liner>`) and the final review is pointed at that list to triage what must be fixed before merge. Minors never enter the loop; a roll-up nobody reads is a silent discard.
+- **Minor findings** go to the ledger (`Task <N>: minor (deferred): <one-liner>`) and the final review is pointed at that list to triage what must be fixed before merge. Minors never enter the loop.
 - **A finding that conflicts with the plan's text** (or is labeled plan-mandated) is the human's decision: present the finding and the plan text, ask which governs. Neither dismiss it because the plan mandates it nor dispatch a fix that contradicts the plan unasked.
 
 Everything else enters the loop. A round = one fix dispatch + one scoped re-review; a round counts dispatches, not agents, so a fresh implementer never costs a round. **Five rounds maximum per task.**
 
 - **Rounds 1-3 — resume the original implementer** with the review file path and the open finding IDs, only while it passes the resume gate (Model Selection: under 150k tokens, short of its cap). Past the gate, or if the harness cannot message it, dispatch fresh at the same tier with brief path, report-file path, review-file path and the IDs — the two files are the persistent memory either way.
-- **Rounds 4-5 — fresh implementer on a more capable model**, with brief path, report-file path, review-file path, open finding IDs, and: "A prior implementer attempted this task [N] times; you own it now. Read the report file for what was tried." Three failed resumes = the implementer cannot see its own problem.
+- **Rounds 4-5 — fresh implementer on a more capable model**, with brief path, report-file path, review-file path, open finding IDs, and: "A prior implementer attempted this task [N] times; you own it now. Read the report file for what was tried."
 - **Every round:** the implementer fixes, re-runs the tests covering the amended code (name them in the fix message — a one-line fix does not need the whole suite), appends its fix report to the same report file, returns the short contract. Dispatch the re-review only once the fix report has the covering tests, the command, and the output.
 - **The re-review is scoped:** `scripts/review-package PLAN_FILE FIX_BASE HEAD` (FIX_BASE = the head the previous review saw), dispatched with [re-review-prompt.md](re-review-prompt.md) plus open finding IDs, brief, report file, review file, diff path. It appends to the review file and verdicts each finding ADDRESSED / NOT ADDRESSED and flags new breakage in the fix diff only; new Critical/Important breakage joins the open list, out-of-scope observations go to the ledger as deferred minors and never extend the loop.
 - **After each round:** `Task <N>: fix round <R>/5 (<X> addressed, <Y> open — <finding IDs>; commits <a7>..<b7>)`.
-- **Never fix findings yourself in the controller session** — pollutes your context and skips review.
+- **Never fix findings yourself in the controller session.**
 
 **The breaker.** Round 5's re-review still leaves findings open → stop dispatching and adjudicate each yourself:
 
 - Reviewer wrong, or contestable → `Task <N>: parked — <finding> — ruling: <why the code stands>`. The final review sees both sides.
 - Real, nothing downstream builds on it → park the same way; ruling says real and deferred.
-- Real and load-bearing (a later task builds on it, or it reveals a plan defect) → STOP. `Task <N>: BLOCKED — <reason>`; report the finding, the plan text it collides with, and the fix history. Parking a structural failure hands every dependent task a problem nobody can fix.
-
-Adjudicate only at the cap — earlier is pre-judging under another name. Every adjudication is a ledger entry; silent discards are forbidden.
+- Real and load-bearing (a later task builds on it, or it reveals a plan defect) → STOP. `Task <N>: BLOCKED — <reason>`; report the finding, the plan text it collides with, and the fix history.
 
 ### 5. Complete the task
 
@@ -118,7 +114,7 @@ Review clean, or every open finding parked with a ruling at the cap → ledger, 
 - `Task <N>: complete (commits <base7>..<head7>, review clean)`
 - `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after a tripped breaker
 
-Then TaskUpdate completed, and in the same call shrink the description to its **Goal:** line plus `Complete — see ledger.` — the harness re-injects every task's full description on periodic reminders; the details survive in the plan, the brief, and `.tasks.json`. Then sync `<plan-path>.tasks.json`: `"status"` → `"completed"`, `"lastUpdated"` → current ISO timestamp — without it a new session sees the task as pending.
+Then TaskUpdate completed, and in the same call shrink the description to its **Goal:** line plus `Complete — see ledger.` (the harness re-injects every description on periodic reminders). Then sync `<plan-path>.tasks.json`: `"status"` → `"completed"`, `"lastUpdated"` → current ISO timestamp — without it a new session sees the task as pending.
 
 Never move on while Critical/Important issues are neither fixed nor parked-with-ruling at the cap.
 
@@ -130,7 +126,7 @@ Findings → **ONE fix subagent with the complete list**, then exactly one scope
 
 ## Finish
 
-Before deleting anything, collect every ledger `ruling` and `parked` line — preflight rulings, tier corrections, parked findings, breaker adjudications — into your final message under **"Rulings I made"**, in order, each with its cost if wrong. Exhaustive: the ledger holds it, the list holds it. It is the only place your decisions on your partner's behalf reach them; a ruling that dies with the workspace was made in secret.
+Before deleting anything, collect every ledger `ruling` and `parked` line — preflight rulings, tier corrections, parked findings, breaker adjudications — into your final message under **"Rulings I made"**, in order, each with its cost if wrong. Exhaustive: the ledger holds it, the list holds it. It is the only place your decisions on your partner's behalf reach them.
 
 Final review clean and fixes merged → `rm -rf <workspace>`; git history is the record. Sibling directories belong to other plans.
 
@@ -143,7 +139,6 @@ Final review clean and fixes merged → `rm -rf <workspace>`; git history is the
 | "The reviewer will just find something new anyway" | Scoped re-reviews cannot wander. Findings on untouched code go to the ledger, not the loop. |
 | "This finding is obviously wrong, I'll drop it" | Adjudicate only at the cap; every ruling is a ledger entry. Silent discards are forbidden. |
 | "The fix was small, skip the re-review" | Unreviewed fixes are how regressions land. Every round ends with a scoped re-review. |
-| "Reviews slow the loop down" | Without reviews the loop is unverified churn. |
 | "This looks harder than `mechanical`, I'll send the top tier" | The plan writer tiered it with the task in hand. Decision left open → ledger a tier ruling; otherwise dispatch at the tier. |
 | "I'll resume it, it already has the context" | The report file is the context. A resume replays the whole transcript every turn; the agent holding the most context is the most expensive one to add a turn to. |
 | "The implementer spawned its own reviewer — free assurance" | A duplicate seat on the same diff; the task review is the gate. A worker-spawned reviewer is a defect to flag. |
