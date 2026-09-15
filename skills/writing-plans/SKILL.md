@@ -11,9 +11,11 @@ description: Use when you have a spec or requirements for a multi-step task, bef
 
 ## Overview
 
-Write comprehensive implementation plans assuming the engineer has zero context for our codebase and questionable taste. Document everything they need to know: which files to touch for each task, code, testing, docs they might need to check, how to test it. Give them the whole plan as bite-sized tasks. DRY. YAGNI. TDD. Frequent commits.
-
-Assume they are a skilled developer, but know almost nothing about our toolset or problem domain. Assume they don't know good test design very well.
+Write implementation plans for an engineer who has no session history, no spec
+in front of them, and no familiarity with this codebase's toolset or problem
+domain — the plan is their only input. Document which files each task touches,
+the code, the tests, the docs to check, and how to verify. Bite-sized tasks.
+DRY. YAGNI. TDD. Frequent commits.
 
 **Context:** If working in an isolated worktree, it should have been created via the `superpowers:using-git-worktrees` skill at execution time.
 
@@ -243,10 +245,6 @@ Suppress entirely if no user-gate tasks were tagged. Do NOT turn this into an `A
 
 ## Execution Handoff
 
-<HARD-GATE>
-STOP. You are about to complete the plan. DO NOT call EnterPlanMode or ExitPlanMode. You MUST call AskUserQuestion below. Both are FORBIDDEN — EnterPlanMode traps the session, ExitPlanMode skips the user's execution choice.
-</HARD-GATE>
-
 A plan enters execution with zero unresolved `[FABLE-ADJUDICATE]` markers — the top-tier coordinator adjudicates each one (or surfaces it to the user) before the execution question. If you are that coordinator, do it now; if markers remain and you cannot adjudicate them, surface them in the question below instead of proceeding silently.
 
 Your ONLY permitted next action is calling `AskUserQuestion` with this EXACT structure — mark the option matching the plan's Execution recommendation "(Recommended)":
@@ -263,8 +261,6 @@ AskUserQuestion:
 ```
 
 **Recommend one option:** append " (Recommended)" to the better fit's label (list it first) and prepend a one-line reason to its description. Default Subagent-Driven — the review loop is the point. Recommend Parallel Session only for a nearly-exhausted session; task count alone is never the reason. On a Fable/Opus session with no frontier tasks, add to the Parallel description: the new session can run a cheaper model (e.g. Sonnet). Never reword the base labels.
-
-**If you are about to call ExitPlanMode, STOP — call AskUserQuestion instead.**
 
 <HARD-GATE>
 STOP. The user has chosen an execution method. You MUST invoke the corresponding skill using the Skill tool NOW. Do NOT implement tasks yourself — do NOT read files, make edits, or update task statuses. Your ONLY permitted action is invoking the skill below.
@@ -295,7 +291,7 @@ For each task in the plan, create a corresponding native task. Embed metadata as
 
 #### User-Thrown Gates — Mechanical Detection + Tagging
 
-You MUST run this check for EVERY task you create. It takes seconds and is the cheapest part of the whole user-gate flow.
+Run this check on every task you create.
 
 **Step 1 — Scan for gate-language.** For each of these, search the user's brief AND the task's Goal/Acceptance Criteria, case-insensitive, whole-word where reasonable:
 

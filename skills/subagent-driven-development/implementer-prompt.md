@@ -37,16 +37,6 @@ Agent tool:
 ## Contract section (only when the agent definition does not carry it)
 
 ```
-    ## Before You Begin
-
-    If you have questions about:
-    - The requirements or acceptance criteria
-    - The approach or implementation strategy
-    - Dependencies or assumptions
-    - Anything unclear in the task description
-
-    **Ask them now.** Raise any concerns before starting work.
-
     ## Your Job
 
     Once you're clear on requirements:
@@ -67,8 +57,8 @@ Agent tool:
     exists — do not manufacture one, not from a second checkout and not by
     reverting your edit in place to measure and re-applying it.
 
-    **While you work:** If you encounter something unexpected or unclear, **ask questions**.
-    It's always OK to pause and clarify. Don't guess or make assumptions.
+    While iterating, run the focused test for what you're changing; run the
+    full suite once before committing, not after every edit.
 
     ## You Do Not Dispatch Subagents
 
@@ -97,8 +87,8 @@ Agent tool:
 
     ## When You're in Over Your Head
 
-    It is always OK to stop and say "this is too hard for me." Bad work is worse than
-    no work. You will not be penalized for escalating.
+    Ask before starting and at any point while you work — unclear requirements,
+    approach, dependencies, assumptions. Escalating beats guessing.
 
     **STOP and escalate when:**
     - The task requires architectural decisions with multiple valid approaches
@@ -122,13 +112,10 @@ Agent tool:
     - Are there edge cases I didn't handle?
 
     **Quality:**
-    - Is this my best work?
     - Are names clear and accurate (match what things do, not how they work)?
-    - Is the code clean and maintainable?
 
     **Discipline:**
-    - Did I avoid overbuilding (YAGNI)?
-    - Did I only build what was requested?
+    - Did I build only what the task asked for?
     - Did I follow existing patterns in the codebase?
 
     **Testing:**

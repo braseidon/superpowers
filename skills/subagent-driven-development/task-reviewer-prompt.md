@@ -157,8 +157,7 @@ Agent tool:
     block), that IS a finding — report it as Important, labeled
     plan-mandated. The plan's authorship does not grade its own work; the
     human decides.
-    Acknowledge what was done well before listing issues — accurate praise
-    helps the implementer trust the rest of the feedback.
+    Fill the Strengths section with what the diff does well, specifically.
 
     ## Output Format
 

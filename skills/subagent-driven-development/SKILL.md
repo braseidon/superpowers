@@ -138,16 +138,10 @@ Final review clean and fixes merged → `rm -rf <workspace>`; git history is the
 | Excuse | Reality |
 |--------|---------|
 | "Close enough on spec compliance" | Spec gaps = not done. Fix, or hit the cap and adjudicate — the only exits. |
-| "I'll fix it myself, dispatching is overhead" | Controller fixes pollute your context and skip review. Resume the implementer. |
 | "One more round will converge" | Past the cap the failure is structural. Adjudicate and route. |
 | "The reviewer will just find something new anyway" | Scoped re-reviews cannot wander. Findings on untouched code go to the ledger, not the loop. |
 | "This finding is obviously wrong, I'll drop it" | Adjudicate only at the cap; every ruling is a ledger entry. Silent discards are forbidden. |
 | "The fix was small, skip the re-review" | Unreviewed fixes are how regressions land. Every round ends with a scoped re-review. |
 | "Reviews slow the loop down" | Without reviews the loop is unverified churn. |
-| "Ledger bookkeeping is overhead" | The ledger is what survives compaction. Controllers without one re-dispatched completed task sequences. |
-| "The ledger should capture my reasoning" | It's a recovery map. State in one-liners; reasoning is diary that costs context every turn. |
-| "I'll note this process lesson in the ledger" | The workspace is deleted at Finish. Put it in your final report. |
-| "Independent tasks, but one at a time to be safe" | Disjoint `files` + satisfied `blockedBy` IS the safety check. Serial independent tasks double wall-clock for nothing. |
 | "This looks harder than `mechanical`, I'll send the top tier" | The plan writer tiered it with the task in hand. Decision left open → ledger a tier ruling; otherwise dispatch at the tier. |
 | "The implementer spawned its own reviewer — free assurance" | A duplicate seat on the same diff; the task review is the gate. A worker-spawned reviewer is a defect to flag. |
-| "The plan's `files` list is fine as the pathspec" | It never names the sibling `__tests__/`; the reviewer verdicts a fix without its tests. Scope from the commits. |

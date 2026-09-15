@@ -24,7 +24,7 @@ Once, at start: run ListAgents and check whether the plan-writing session is ali
 ### Step 0: Load Persisted Tasks
 
 1. Call `TaskList` to check for existing native tasks
-2. **CRITICAL - Locate tasks file:** Try `<plan-path>.tasks.json`, if not found glob for matching `.tasks.json`
+2. **Locate the tasks file:** try `<plan-path>.tasks.json`; if not found, glob for a matching `.tasks.json`
 3. If tasks file exists AND native tasks empty: recreate from JSON using TaskCreate:
    - Include full `description` from .tasks.json (not just subject)
    - Include `metadata` field if present (files, verifyCommand, acceptanceCriteria)
@@ -57,9 +57,9 @@ If TaskList returned no tasks or tasks don't match plan:
    - subject: The task title from the plan
    - description: Full structured content (Goal, Files, Acceptance Criteria, Verify, Steps) with `json:metadata` code fence at the end containing files, verifyCommand, acceptanceCriteria
    - activeForm: Present tense action (e.g., "Implementing X")
-3. **CRITICAL - Dependencies:** For EACH task that has blockedBy in the plan or .tasks.json:
+3. **Dependencies:** for each task with `blockedBy` in the plan or `.tasks.json`:
    - Call `TaskUpdate` with `taskId` and `addBlockedBy: [list-of-blocking-task-ids]`
-   - Do NOT skip this step - dependencies are essential for correct execution order
+   - Without the edges the tasks execute in the wrong order
 4. Call `TaskList` and verify blockedBy relationships show correctly (e.g., "blocked by #1, #2")
 
 ### Step 2: Execute Tasks
