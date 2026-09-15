@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Test: pre-askuser-handoff-guard hook — synthetic transcripts, no LLM.
 # Covers all decision branches: armed via Skill tool_use, armed via user-message
-# invocation (live failure mode — content as string AND as text-block list),
+# invocation (content as string AND as text-block list),
 # compliant two-option handoff → allow, wrong options → block, CLARIFICATION
 # token → allow, disarmed by later execution Skill → allow, prior compliant
 # handoff → allow, no TaskCreate after arm → allow, no routing file → allow,
@@ -76,7 +76,7 @@ cat > "$WORK/armed-via-skill.jsonl" <<'EOF'
 EOF
 
 # Transcript: writing-plans invoked via user message (slash command injection) — content as string.
-# This is the live failure mode from session 2013ea56.
+# This is the failure mode the gate exists to catch.
 cat > "$WORK/armed-via-user-string.jsonl" <<'EOF'
 {"type":"user","message":{"content":"superpowers:writing-plans skill"}}
 {"type":"assistant","message":{"content":[{"type":"tool_use","name":"TaskCreate","input":{"subject":"Task 1","description":"**Goal:** do thing\n```json:metadata\n{\"modelTier\":\"mechanical\"}\n```"}}]}}
@@ -175,7 +175,7 @@ print(json.dumps(inp))
 " "$transcript" "$cwd"
 }
 
-# Wrong options (improvised custom menu — the live failure pattern).
+# Wrong options (improvised custom menu — the pattern this gate catches).
 make_wrong_options_input() {
     local transcript="$1" cwd="${2:-$WORK/project}"
     python3 -c "
@@ -306,7 +306,7 @@ rc=$(run_hook "$INPUT")
 assert "exit code" "0" "$rc"
 echo ""
 
-echo "Test 10: armed via user-message string (live failure mode) + wrong options → BLOCK"
+echo "Test 10: armed via user-message string + wrong options → BLOCK"
 INPUT=$(make_wrong_options_input "$WORK/armed-via-user-string.jsonl")
 rc=$(run_hook "$INPUT")
 assert "exit code" "2" "$rc"
@@ -419,6 +419,52 @@ INPUT=$(make_wrong_options_input "$WORK/armed-via-skill.jsonl")
 _rc=0
 env HOME="$ISOLATED_HOME" /bin/bash "$HOOK" >/dev/null 2>"$WORK/stderr" <<< "$INPUT" && _rc=$? || _rc=$?
 assert "armed wrong-menu blocks under /bin/bash" "2" "$_rc"
+echo ""
+
+echo "Test 22: recommendation direction vs measured context usage"
+# The last assistant entry's usage (input + cache tokens) is the measured
+# context size. Window defaults to 200000; 140k => 70%, 10k => 5%.
+make_usage_transcript() { # $1=out-file $2=total-tokens
+    cat "$WORK/armed-via-skill.jsonl" > "$1"
+    python3 -c "
+import json, sys
+entry = {'type': 'assistant', 'message': {'usage': {'input_tokens': 1000, 'cache_read_input_tokens': int(sys.argv[2]) - 1000, 'cache_creation_input_tokens': 0}, 'content': [{'type': 'text', 'text': 'Skill note'}]}}
+open(sys.argv[1], 'a').write(json.dumps(entry) + '\n')
+" "$1" "$2"
+}
+make_recommended_input() { # $1=transcript $2=which(subagent|parallel)
+    python3 -c "
+import json, sys
+which = sys.argv[3]
+sub = 'Subagent-Driven (this session)' + (' (Recommended)' if which == 'subagent' else '')
+par = 'Parallel Session (separate)' + (' (Recommended)' if which == 'parallel' else '')
+inp = {
+    'tool_name': 'AskUserQuestion',
+    'tool_input': {'questions': [{
+        'question': 'Plan complete and saved to docs/superpowers/plans/2026-06-10-foo.md. How would you like to execute it?',
+        'header': 'Execution',
+        'options': [{'label': sub, 'description': 'd'}, {'label': par, 'description': 'd'}]}]},
+    'transcript_path': sys.argv[1],
+    'cwd': sys.argv[2]
+}
+print(json.dumps(inp))
+" "$1" "$WORK/project" "$2"
+}
+make_usage_transcript "$WORK/armed-high-usage.jsonl" 140000
+make_usage_transcript "$WORK/armed-low-usage.jsonl" 10000
+rc=$(run_hook "$(make_recommended_input "$WORK/armed-high-usage.jsonl" subagent)")
+assert "70% used + Subagent recommended → block" "2" "$rc"
+assert_stderr_contains "block cites measured percentage" "70%"
+rc=$(run_hook "$(make_recommended_input "$WORK/armed-high-usage.jsonl" parallel)")
+assert "70% used + Parallel recommended → allow" "0" "$rc"
+rc=$(run_hook "$(make_recommended_input "$WORK/armed-low-usage.jsonl" parallel)")
+assert "5% used + Parallel recommended → block" "2" "$rc"
+rc=$(run_hook "$(make_recommended_input "$WORK/armed-low-usage.jsonl" subagent)")
+assert "5% used + Subagent recommended → allow" "0" "$rc"
+rc=$(run_hook "$(make_compliant_input "$WORK/armed-high-usage.jsonl")")
+assert "70% used + no (Recommended) marker → allow (fail-open)" "0" "$rc"
+rc=$(run_hook "$(make_recommended_input "$WORK/armed-via-skill.jsonl" subagent)")
+assert "no usage data + Subagent recommended → allow (fail-open)" "0" "$rc"
 echo ""
 
 echo "=== Summary: $FAILED failure(s) ==="

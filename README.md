@@ -58,39 +58,37 @@ This fork integrates Claude Code-native features into the Superpowers workflow.
 
 ## Installation
 
-### Option 1: Via Marketplace (recommended)
-
 ```bash
 # Register marketplace
 /plugin marketplace add pcvelz/superpowers
 
 # Install plugin
 /plugin install superpowers@braseidon-superpowers
+
+# Recommended: enable auto-update (/plugin → Marketplaces tab)
 ```
 
-### Option 2: Direct URL
+Alternatively, install directly from the repository URL: `/plugin install --source url https://github.com/pcvelz/superpowers.git`
 
-```bash
-/plugin install --source url https://github.com/pcvelz/superpowers.git
-```
-
-### Stay Updated (recommended)
-
-Third-party marketplaces don't auto-update by default — installs stay frozen on the original version until you refresh. To get future fixes and new optional hooks automatically:
-
-1. Run `/plugin`
-2. Open the **Marketplaces** tab
-3. Toggle **Enable auto-update** on `braseidon-superpowers`
-
-Or refresh manually any time:
+### Automatic Setup (recommended)
 
 ```
-/plugin marketplace update braseidon-superpowers
+/superpowers:onboard
 ```
 
-### Verify Installation
+It turns the native task tools back on (required on Claude Code 2.1.233+), can enable marketplace auto-update, and walks you through the optional features (model routing, user-gate enforcement, commit strategy). One scope choice governs every write.
 
-Run `/superpowers:onboard` for a guided walkthrough of the optional features (model routing, user-gate enforcement, commit strategy). One scope choice governs every write; manual setup is documented below.
+### Manual Setup
+
+Everything the onboarding configures can also be set up by hand. The one required step:
+
+**Turn the task tools back on (required on Claude Code 2.1.233+).** Claude Code 2.1.233 removed the task tools by default, and this plugin is built on them. Add this to `~/.claude/settings.json` (all projects) or `<project>/.claude/settings.json`:
+
+```json
+{"env": {"CLAUDE_CODE_ENABLE_TODO_TOOLS": "1"}}
+```
+
+The optional features are documented in their own sections below.
 
 ## The Basic Workflow
 
@@ -101,6 +99,8 @@ Run `/superpowers:onboard` for a guided walkthrough of the optional features (mo
 3. **writing-plans** - Activates with approved design. Breaks work into bite-sized tasks (2-5 minutes each). Every task has exact file paths, complete code, verification steps. *Creates native tasks with dependencies.*
 
 4. **subagent-driven-development** or **executing-plans** - Activates with plan. Dispatches fresh subagent per task with two-stage review (spec compliance, then code quality), or executes in batches with human checkpoints.
+
+   **Architect pattern (new):** when executing in a separate session, that session can message the plan-writing session via Claude Code's agent chat (`ListAgents` + `SendMessage`). The plan session acts as the architect and answers design questions, while executors work with a focused context. This makes `write-plan` useful for offloading side tasks from a long-running session without losing its knowledge.
 
 5. **test-driven-development** - Activates during implementation. Enforces RED-GREEN-REFACTOR: write failing test, watch it fail, write minimal code, watch it pass, commit. Deletes code written before tests.
 
