@@ -38,5 +38,5 @@ done
 [ -z "$drift" ] && exit 0
 
 # Compact, once per session, violation-gated.
-printf '{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "<onboarding-update-available>A plugin update added setting(s) this install has never been asked about: %s. Mention it to your human partner once, briefly: running /superpowers-extended-cc:onboard configures only the new option(s); existing answers stay.</onboarding-update-available>"}}\n' "$drift"
+printf '{"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": "<onboarding-update-available>A plugin update added setting(s) this install has never been asked about: %s. Mention it to your human partner once, briefly: running /superpowers:onboard configures only the new option(s); existing answers stay.</onboarding-update-available>"}}\n' "$drift"
 exit 0
