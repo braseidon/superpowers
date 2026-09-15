@@ -28,7 +28,9 @@ Agent tool:
 
     ## The Findings Under Verification
 
-    [FINDINGS]
+    Open finding IDs: [OPEN_FINDINGS]
+    Read them in the review file: [REVIEW_FILE]
+    Append your re-review to that file under `## Fix round [R]`.
 
     ## The Fix
 
@@ -63,7 +65,7 @@ Agent tool:
 
     ## Scope
 
-    Your scope is the findings list and the fix diff. Verdict every finding.
+    Your scope is the open finding IDs and the fix diff. Verdict every finding.
     Inspect the fix diff for new problems the fix itself introduced. Do NOT
     re-review code the fix did not touch: if you notice an issue entirely
     outside the fix diff, report it under Out-of-Scope Observations — it
@@ -82,41 +84,42 @@ Agent tool:
 
     ## Output Format
 
-    Your final message is the report itself: begin directly with the first
-    finding's verdict. Every line is a verdict, a finding with file:line,
-    or a check you ran — no preamble, no process narration.
+    Appended to the review file under `## Fix round [R]`:
 
     ### Finding Verdicts
-
-    For each finding in The Findings Under Verification, in order:
-    - **[finding one-liner]** — ADDRESSED | NOT ADDRESSED, with file:line
-      evidence. "Attempted" is not addressed: the specific defect must no
-      longer exist.
-
+    For each open finding ID, in order:
+    - **I1** — ADDRESSED | NOT ADDRESSED, with file:line evidence.
+      "Attempted" is not addressed: the specific defect must no longer exist.
     ### New Breakage in the Fix Diff
-
-    Anything the fix itself broke or introduced, with severity
-    (Critical/Important/Minor) and file:line. "None" if clean.
-
+    Anything the fix itself broke or introduced, numbered on from the
+    review's last ID (C2, I4 …), with severity and file:line. "None" if clean.
     ### Out-of-Scope Observations
-
     Issues you noticed entirely outside the fix diff. Non-blocking; the
     controller ledgers these for the final review. "None" if none.
-
     ### Verdict
-
     **Fix round:** [All findings addressed, no new Critical/Important
-    breakage | Findings remain open] — list the open ones.
+    breakage | Findings remain open] — list the open IDs.
+
+    Final message (the index, under 12 lines):
+
+    Review: <review file path> · fix round [R]
+    I1 ADDRESSED `path:line` · I2 NOT ADDRESSED `path:line` — why
+    New breakage: none | C2 `path:line` — problem. fix.
+    Out of scope: <n> (in file)
+    Verdict: all addressed | open: I2
 ```
 
 **Placeholders:**
 - `[BRIEF_FILE]` — the task brief file (same file the implementer worked from)
-- `[FINDINGS]` — the Critical/Important findings and spec gaps from the
-  previous review, copied verbatim, one per bullet
+- `[OPEN_FINDINGS]` — the IDs still open (`C1, I2, I3`), never the text
+- `[REVIEW_FILE]` — the review file the full review was written to; fix
+  rounds append to it
+- `[R]` — the round number
 - `[REPORT_FILE]` — the implementer's report file (fix reports appended)
 - `[FIX_BASE_SHA]` — the head the previous review saw
 - `[HEAD_SHA]` — current commit
 - `[DIFF_FILE]` — the path `scripts/review-package PLAN_FILE FIX_BASE HEAD` printed
 
-**Re-reviewer returns:** per-finding verdicts (ADDRESSED / NOT ADDRESSED),
-new breakage in the fix diff, out-of-scope observations, and a round verdict.
+**Re-reviewer returns:** the index — one verdict per open ID (ADDRESSED /
+NOT ADDRESSED), new breakage one line each, out-of-scope count, round
+verdict. The detail is appended to `[REVIEW_FILE]`.

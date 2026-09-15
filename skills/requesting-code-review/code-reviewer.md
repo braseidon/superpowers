@@ -30,6 +30,11 @@ Subagent (general-purpose):
     git diff [BASE_SHA]..[HEAD_SHA]
     ```
 
+    ## Where Your Review Goes
+
+    Write the full review to: [REVIEW_FILE]
+    Your final message is the index of that file (Output Format below).
+
     ## Read-Only Review
 
     Your review is read-only on this checkout. Do not mutate the working tree, the index, HEAD, or branch state in any way. Use tools like `git show`, `git diff`, and `git log` to inspect history. If you need a working copy of a different revision, prefer your platform's native worktree tool (e.g. `EnterWorktree`) to open it in an isolated location, or read individual files directly with `git show [SHA]:path` — never move HEAD on this checkout.
@@ -78,8 +83,8 @@ Subagent (general-purpose):
     ## Calibration
 
     Categorize issues by actual severity. Not everything is Critical.
-    Acknowledge what was done well before listing issues — accurate praise
-    helps the implementer trust the rest of the feedback.
+    No praise section: what is done well is silence, and a check you ran
+    that came back clean is one line under Checked and clear.
 
     If you find significant deviations from the plan, flag them specifically
     so the implementer can confirm whether the deviation was intentional.
@@ -88,34 +93,36 @@ Subagent (general-purpose):
 
     ## Output Format
 
-    ### Strengths
-    [What's well done? Be specific.]
+    Review file:
 
-    ### Issues
-
-    #### Critical (Must Fix)
-    [Bugs, security issues, data loss risks, broken functionality]
-
-    #### Important (Should Fix)
-    [Architecture problems, missing features, poor error handling, test gaps]
-
-    #### Minor (Nice to Have)
-    [Code style, optimization opportunities, documentation polish]
-
-    For each issue:
-    - File:line reference
-    - What's wrong
-    - Why it matters
-    - How to fix (if not obvious)
-
-    ### Recommendations
+    # Review: [DESCRIPTION]   (range [BASE_SHA]..[HEAD_SHA])
+    ## Plan alignment
+    - deviations, missing functionality, plan defects — file:line each
+    ## Findings
+    ### Critical
+    - **C1** `path:line` — what's wrong. Why it matters. How to fix (if not obvious).
+      [Bugs, security issues, data loss risks, broken functionality]
+    ### Important
+    - **I1** … [Architecture problems, missing features, poor error handling, test gaps]
+    ### Minor
+    - **M1** … [Code style, optimization opportunities, documentation polish]
+    ## Checked and clear
+    (one line per risk you named and checked, file:line)
+    ## Recommendations
     [Improvements for code quality, architecture, or process]
+    ## Assessment
+    **Ready to merge?** [Yes | No | With fixes] — 1-2 sentence technical assessment
 
-    ### Assessment
+    Final message (the index, under 20 lines):
 
-    **Ready to merge?** [Yes | No | With fixes]
+    Review: <review file path>
+    Plan: aligned | deviations (<n>)
+    C1 `path:line` — problem. fix.
+    I1 `path:line` — problem. fix.
+    Minor: <n> · Recommendations: <n> (in file)
+    Ready to merge: Yes | No | With fixes
 
-    **Reasoning:** [1-2 sentence technical assessment]
+    Zero findings → `Findings: none.`
 ```
 
 **Placeholders:**
@@ -123,43 +130,21 @@ Subagent (general-purpose):
 - `[PLAN_OR_REQUIREMENTS]` — what it should do (plan file path, task text, or requirements)
 - `[BASE_SHA]` — starting commit
 - `[HEAD_SHA]` — ending commit
+- `[REVIEW_FILE]` — where the full review is written (the plan's workspace
+  dir under subagent-driven-development, e.g. `…/final-review.md`; any
+  unique path otherwise). The fix dispatch cites its finding IDs and path
 
-**Reviewer returns:** Strengths, Issues (Critical / Important / Minor), Recommendations, Assessment
+**Reviewer returns:** the index — review path, plan verdict, one line per
+Critical/Important finding with its ID, Minor and Recommendation counts,
+merge verdict. The full review is in `[REVIEW_FILE]`.
 
-## Example Output
+## Example final message
 
 ```
-### Strengths
-- Clean database schema with proper migrations (db.ts:15-42)
-- Comprehensive test coverage (18 tests, all edge cases)
-- Good error handling with fallbacks (summarizer.ts:85-92)
-
-### Issues
-
-#### Important
-1. **Missing help text in CLI wrapper**
-   - File: index-conversations:1-31
-   - Issue: No --help flag, users won't discover --concurrency
-   - Fix: Add --help case with usage examples
-
-2. **Date validation missing**
-   - File: search.ts:25-27
-   - Issue: Invalid dates silently return no results
-   - Fix: Validate ISO format, throw error with example
-
-#### Minor
-1. **Progress indicators**
-   - File: indexer.ts:130
-   - Issue: No "X of Y" counter for long operations
-   - Impact: Users don't know how long to wait
-
-### Recommendations
-- Add progress reporting for user experience
-- Consider config file for excluded projects (portability)
-
-### Assessment
-
-**Ready to merge: With fixes**
-
-**Reasoning:** Core implementation is solid with good architecture and tests. Important issues (help text, date validation) are easily fixed and don't affect core functionality.
+Review: .superpowers/sdd/2026-05-09-foo/final-review.md
+Plan: aligned
+I1 `index-conversations:1-31` — no --help flag, users won't discover --concurrency. Add a --help case with usage examples.
+I2 `search.ts:25-27` — invalid dates silently return no results. Validate ISO format, throw with an example.
+Minor: 1 · Recommendations: 2 (in file)
+Ready to merge: With fixes
 ```

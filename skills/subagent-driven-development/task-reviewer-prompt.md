@@ -27,6 +27,11 @@ Agent tool:
 
     Read the implementer's report: [REPORT_FILE]
 
+    ## Where Your Review Goes
+
+    Write the full review to: [REVIEW_FILE]
+    Your final message is the index of that file (Output Format below).
+
     ## Diff Under Review
 
     **Base:** [BASE_SHA]
@@ -134,15 +139,16 @@ Agent tool:
       significantly grow existing files? (Don't flag pre-existing file
       sizes — focus on what this change contributed.)
 
-    Your report should point at evidence: file:line references for every
+    Your review points at evidence: file:line references for every
     finding and for any check you would otherwise answer with a bare
-    "yes." A tight report that cites lines gives the controller everything
-    it needs.
+    "yes." Number findings C1…, I1…, M1… — the IDs are stable across fix
+    rounds and every later prompt cites them instead of copying text.
 
-    Your final message is the report itself: begin directly with the
-    spec-compliance verdict. Every line is a verdict, a finding with
-    file:line, or a check you ran — no preamble, no process narration,
-    no closing summary.
+    The file is the review; your final message is its index: the review
+    path, the spec verdict, one line per Critical and Important finding,
+    a Minor count, and the quality verdict — no preamble, no process
+    narration, no strengths, no closing summary. Test output and error
+    text you quote stay whole in the file; the reply names the file.
 
     ## Calibration
 
@@ -157,35 +163,40 @@ Agent tool:
     block), that IS a finding — report it as Important, labeled
     plan-mandated. The plan's authorship does not grade its own work; the
     human decides.
-    Fill the Strengths section with what the diff does well, specifically.
 
     ## Output Format
 
-    ### Spec Compliance
+    Review file:
 
+    # Review: Task N — [name]   (files reviewed, diff path)
+    ## Spec Compliance
     - ✅ Spec compliant | ❌ Issues found: [what's missing/extra/misunderstood,
       with file:line references]
     - ⚠️ Cannot verify from diff: [requirements you could not verify from the
       diff alone, and what the controller should check — report alongside the
       ✅/❌ verdict for everything you could verify]
+    ## Findings
+    ### Critical
+    - **C1** `path:line` — what's wrong. Why it matters. How to fix (if not obvious).
+    ### Important
+    - **I1** …
+    ### Minor
+    - **M1** …
+    ## Checked and clear
+    (one line per risk you named and checked, file:line)
+    ## Assessment
+    **Task quality:** [Approved | Needs fixes] — 1-2 sentence technical assessment
 
-    ### Strengths
-    [What's well done? Be specific.]
+    Final message (the index, under 20 lines):
 
-    ### Issues
+    Review: <review file path>
+    Spec: compliant | issues (<n>) | cannot verify (<n>)
+    C1 `path:line` — problem. fix.
+    I1 `path:line` — problem. fix.
+    Minor: <n> (in file)
+    Verdict: Approved | Needs fixes
 
-    #### Critical (Must Fix)
-    #### Important (Should Fix)
-    #### Minor (Nice to Have)
-
-    For each issue: file:line, what's wrong, why it matters, how to fix
-    (if not obvious).
-
-    ### Assessment
-
-    **Task quality:** [Approved | Needs fixes]
-
-    **Reasoning:** [1-2 sentence technical assessment]
+    Zero findings → `Findings: none.`
 ```
 
 **Placeholders:**
@@ -197,11 +208,17 @@ Agent tool:
   are already in the contract)
 - `[REPORT_FILE]` — REQUIRED: the file the implementer wrote its detailed
   report to
+- `[REVIEW_FILE]` — REQUIRED: where the reviewer writes the full review,
+  named after the brief (`…/task-N-brief.md` → `…/task-N-review.md`;
+  checkpoint reviews `…/cpN-review.md`). Fix rounds append to it; the
+  finding IDs in it are what fix briefs and re-reviews cite
 - `[BASE_SHA]` — commit before this task
 - `[HEAD_SHA]` — current commit
 - `[DIFF_FILE]` — REQUIRED: the path the controller wrote the review
   package to (`scripts/review-package PLAN_FILE BASE HEAD` prints the unique
   path it wrote; the package never enters the controller's context)
 
-**Reviewer returns:** Spec Compliance verdict (✅/❌/⚠️), Strengths, Issues
-(Critical/Important/Minor), Task quality verdict
+**Reviewer returns:** the index — review path, spec verdict (✅/❌/⚠️), one
+line per Critical/Important finding with its ID, Minor count, task quality
+verdict. The full review is in `[REVIEW_FILE]`; the controller reads it only
+to ledger minors and to adjudicate.
