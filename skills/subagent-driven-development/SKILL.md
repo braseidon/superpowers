@@ -37,7 +37,7 @@ Execute a plan by dispatching a fresh subagent per task, with a two-stage review
 - Tier → model, effort and agent type come from the project's routing (routing file or instruction file); defaults when it names none, the effort floor, and the reasoning: [references/model-selection.md](references/model-selection.md). A project implementer agent (contract, effort pin, turn cap in its definition) is dispatched by `subagent_type`, model on the call, brief = the task only; none → `general-purpose` + full template. Never the cheap tier (Haiku) for implementation; mid tier at medium effort only for trivial transcription.
 - **A partial return (turn cap) is not DONE:** re-brief a fresh implementer with the brief path, the report file and "check `git status` first; a prior implementer's edits are on disk", or bump. Never resume it: a resume replays the whole transcript per turn, and an agent at its cap is past the resume gate below.
 - **Resume gate:** resume an agent (fix rounds, mid-flight corrections) only when its Agent result reported under 150k tokens AND it stopped short of its turn cap. Past either line, dispatch fresh; the report file and review file are the memory.
-- **One bump, no retry.** A mid-tier implementer stuck on REASONING (BLOCKED, or DONE_WITH_CONCERNS about correctness, with the context it needed in hand) → FRESH dispatch on the top tier with brief path, report-file path, concerns verbatim; never a second mid-tier attempt. A missing fact (NEEDS_CONTEXT, or a BLOCKED your context answers) gets the answer and a resume of the same agent — the bump only if it sticks again.
+- **One bump, no retry.** A mid-tier implementer stuck on REASONING (BLOCKED, or DONE_WITH_CONCERNS about correctness, with the context it needed in hand) → FRESH dispatch on the top tier with brief path, report-file path, concerns verbatim; never a second mid-tier attempt. A missing fact (NEEDS_CONTEXT, or a BLOCKED your context answers) gets the answer and a resume of the same agent when it passes the resume gate above (else a fresh dispatch at the same tier with the answer, brief path and report-file path) — the bump only if it sticks again.
 - **Reviewers:** task/checkpoint reviews, fix rounds 4-5, final whole-branch review → top tier. Scoped re-reviews → mid tier. Project reviewer agent named by the routing → `subagent_type`, model on the call, prompt = inputs only; none → `general-purpose` + full template.
 - **Always name the model explicitly on every dispatch** — an omitted model inherits your session's, usually the most expensive.
 
@@ -64,7 +64,7 @@ Template: [implementer-prompt.md](implementer-prompt.md)
 ### 2. Handle the report
 
 - **DONE:** generate the review package (§3) and dispatch the task reviewer. Generate it only after the report lands — a pre-generated package is stale.
-- **DONE_WITH_CONCERNS:** read the concerns. Correctness or scope → address before review; observations ("this file is getting large") → note and proceed.
+- **DONE_WITH_CONCERNS:** read the concerns. Correctness or scope → address before review, by resume under the resume gate or a fresh same-tier dispatch carrying your ruling and the report-file path; observations ("this file is getting large") → note and proceed.
 - **NEEDS_CONTEXT:** provide the missing context and re-dispatch.
 - **BLOCKED:** context problem → more context, same model; reasoning problem → fresh dispatch on a more capable model (one bump, Model Selection); too large → split; plan wrong → escalate to the human.
 
@@ -94,7 +94,7 @@ Triggers on spec ❌, any Critical or Important finding, or a confirmed ⚠️ g
 - **Minor findings** go to the ledger (`Task <N>: minor (deferred): <one-liner>`) and the final review is pointed at that list to triage what must be fixed before merge. Minors never enter the loop; a roll-up nobody reads is a silent discard.
 - **A finding that conflicts with the plan's text** (or is labeled plan-mandated) is the human's decision: present the finding and the plan text, ask which governs. Neither dismiss it because the plan mandates it nor dispatch a fix that contradicts the plan unasked.
 
-Everything else enters the loop. A round = one fix dispatch + one scoped re-review. **Five rounds maximum per task.**
+Everything else enters the loop. A round = one fix dispatch + one scoped re-review; a round counts dispatches, not agents, so a fresh implementer never costs a round. **Five rounds maximum per task.**
 
 - **Rounds 1-3 — resume the original implementer** with the review file path and the open finding IDs, only while it passes the resume gate (Model Selection: under 150k tokens, short of its cap). Past the gate, or if the harness cannot message it, dispatch fresh at the same tier with brief path, report-file path, review-file path and the IDs — the two files are the persistent memory either way.
 - **Rounds 4-5 — fresh implementer on a more capable model**, with brief path, report-file path, review-file path, open finding IDs, and: "A prior implementer attempted this task [N] times; you own it now. Read the report file for what was tried." Three failed resumes = the implementer cannot see its own problem.
@@ -145,4 +145,5 @@ Final review clean and fixes merged → `rm -rf <workspace>`; git history is the
 | "The fix was small, skip the re-review" | Unreviewed fixes are how regressions land. Every round ends with a scoped re-review. |
 | "Reviews slow the loop down" | Without reviews the loop is unverified churn. |
 | "This looks harder than `mechanical`, I'll send the top tier" | The plan writer tiered it with the task in hand. Decision left open → ledger a tier ruling; otherwise dispatch at the tier. |
+| "I'll resume it, it already has the context" | The report file is the context. A resume replays the whole transcript every turn; the agent holding the most context is the most expensive one to add a turn to. |
 | "The implementer spawned its own reviewer — free assurance" | A duplicate seat on the same diff; the task review is the gate. A worker-spawned reviewer is a defect to flag. |
