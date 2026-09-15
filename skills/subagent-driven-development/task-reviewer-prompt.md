@@ -1,6 +1,6 @@
 # Task Reviewer Prompt Template
 
-Two shapes. The project's routing names a reviewer agent type (e.g. `plan-reviewer`, whose definition carries the contract below) → dispatch it by `subagent_type` with the model on the call and send only the **Task** section. No such agent → `general-purpose` with the Task section plus the **Contract** section verbatim.
+Two shapes. The project's routing names a reviewer agent type (e.g. `task-reviewer`, whose definition carries the contract below) → dispatch it by `subagent_type` with the model on the call and send only the **Task** section. No such agent → `general-purpose` with the Task section plus the **Contract** section verbatim.
 
 The reviewer reads the task's diff once and returns two verdicts: spec compliance and code quality. This is a task-scoped gate, not a merge review — a broad whole-branch review happens separately after all tasks are complete.
 
