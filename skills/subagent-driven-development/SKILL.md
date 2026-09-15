@@ -35,7 +35,8 @@ Execute a plan by dispatching a fresh subagent per task, with a two-stage review
 ## Model Selection
 
 - **Dispatch the implementer at the plan's `modelTier` (`mechanical` | `standard` | `frontier`). Do not re-decide.** A tier is wrong only when the brief contradicts it (a `mechanical` task with a design choice left open): ledger `Task <N>: ruling — tier mechanical→frontier — <why>` and dispatch at the corrected tier.
-- Tier → model and effort come from the project's routing (routing file or instruction file); defaults when it names none, the effort floor, and the reasoning: [references/model-selection.md](references/model-selection.md). Never the cheap tier (Haiku) for implementation; mid tier at medium effort only for trivial transcription.
+- Tier → model, effort and agent type come from the project's routing (routing file or instruction file); defaults when it names none, the effort floor, and the reasoning: [references/model-selection.md](references/model-selection.md). A project implementer agent (contract, effort pin, turn cap in its definition) is dispatched by `subagent_type`, model on the call, brief = the task only; none → `general-purpose` + full template. Never the cheap tier (Haiku) for implementation; mid tier at medium effort only for trivial transcription.
+- **A partial return (turn cap) is not DONE:** resume with "continue from where you stopped" (transcript intact; the partial text may lag), re-brief, or bump.
 - **One bump, no retry.** A mid-tier implementer stuck on REASONING (BLOCKED, or DONE_WITH_CONCERNS about correctness, with the context it needed in hand) → FRESH dispatch on the top tier with brief path, report-file path, concerns verbatim; never a second mid-tier attempt. A missing fact (NEEDS_CONTEXT, or a BLOCKED your context answers) gets the answer and a resume of the same agent — the bump only if it sticks again.
 - **Reviewers:** task/checkpoint reviews, fix rounds 4-5, final whole-branch review → top tier. Scoped re-reviews → mid tier.
 - **Always name the model explicitly on every dispatch** — an omitted model inherits your session's, usually the most expensive.
@@ -72,7 +73,7 @@ Never ignore an escalation or force the same model to retry unchanged. Implement
 
 ### 3. Review the task
 
-Per-task reviews are task-scoped gates; the broad review happens once at the end. Never skip the task review, never accept a report missing either verdict (spec compliance AND task quality), and implementer self-review never replaces it.
+Per-task reviews are task-scoped gates; the broad review is at the end. Never skip one, never accept a report missing either verdict (spec compliance AND task quality); implementer self-review never replaces it.
 
 - **Hand the reviewer its diff as a file:** `scripts/review-package PLAN_FILE BASE HEAD` (from this skill's directory) prints the unique path it wrote — commit list, stat summary, full `-U10` diff, one Read, nothing in your context. Without bash: `git log --oneline` + `git diff --stat` + `git diff -U10` for the range into one uniquely named file. BASE is the commit recorded before dispatch — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task. Never dispatch a reviewer without a diff file.
 - **Share the repo with anything else that commits? Scope the package** — `scripts/review-package PLAN_FILE BASE HEAD -- $(git show --name-only --format= <shas from the implementer's report>)`. Foreign commits land between yours whenever another session, agent or human works the checkout; `BASE..HEAD` sweeps them all in. A strictly sequential loop needs this too — the interleaving comes from outside.
@@ -124,7 +125,7 @@ Never move on while Critical/Important issues are neither fixed nor parked-with-
 
 `scripts/review-package PLAN_FILE MERGE_BASE HEAD` (MERGE_BASE = where the branch started, e.g. `git merge-base main HEAD`); dispatch superpowers:requesting-code-review's [code-reviewer.md](../requesting-code-review/code-reviewer.md) on the most capable model with the printed path, pointed at the ledger's deferred-minor and parked lines to triage what must be fixed before merge.
 
-Findings → **ONE fix subagent with the complete list** (per-finding fixers each rebuild context and re-run suites), then exactly one scoped re-review of the fix range (`review-package PLAN_FILE FIX_BASE HEAD`, re-review-prompt.md). Adjudicate residuals as in the breaker. **No second fix wave** — residual load-bearing findings surface when finishing-a-development-branch presents the options.
+Findings → **ONE fix subagent with the complete list**, then exactly one scoped re-review of the fix range (`review-package PLAN_FILE FIX_BASE HEAD`, re-review-prompt.md). Adjudicate residuals as in the breaker. **No second fix wave** — residual load-bearing findings surface when finishing-a-development-branch presents the options.
 
 ## Finish
 

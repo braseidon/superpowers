@@ -1,9 +1,13 @@
 # Implementer Subagent Prompt Template
 
-Use this template when dispatching an implementer subagent.
+Two shapes. The project's routing names an implementer agent type (e.g. `plan-implementer`, whose definition carries the contract below) → dispatch it by `subagent_type` with the model on the call and send only the **Task** section. No such agent → `general-purpose` with the Task section plus the **Contract** section verbatim.
+
+## Task section (always)
 
 ```
-Task tool (general-purpose):
+Agent tool:
+  subagent_type: <project implementer agent, or general-purpose>
+  model: <the tier's model from the project's routing — always explicit>
   description: "Implement Task N: [task name]"
   prompt: |
     You are implementing Task N: [task name]
@@ -25,8 +29,14 @@ Task tool (general-purpose):
 
     ## Context
 
-    [Scene-setting: where this fits, dependencies, architectural context]
+    [One line on where this fits; interfaces and decisions from earlier
+    tasks the brief cannot know; your resolution of any ambiguity; skills
+    to load by name; the report-file path.]
+```
 
+## Contract section (only when the agent definition does not carry it)
+
+```
     ## Before You Begin
 
     If you have questions about:

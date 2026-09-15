@@ -5,7 +5,8 @@ The SKILL.md body carries the four binding rules (dispatch at the plan's tier, o
 ## Tier → model defaults
 
 - `mechanical`, `standard` → mid tier (Sonnet). Both are transcription plus testing when the plan carries the code — and a plan written by writing-plans always does. Multi-file is not a reason to upgrade; a decision left open at edit time is.
-- `frontier` → top tier (Opus): a design choice remains, broad codebase understanding is needed, or the task sits in a domain the project's instruction file routes to its top tier.
+- `frontier` → top tier (Opus): a design choice remains, or broad codebase understanding is needed. A domain the project routes to its top tier for OTHER work (a skill-gated surface) is a brief requirement — name the skill — not a tier trigger; measured on one plan, that clause alone tiered 27 of 46 transcription tasks `frontier`.
+- Agent type: the project's implementer agent when its routing names one (the definition carries the contract, the effort pin and the turn cap; model on the call), else `general-purpose` with the full template. xhigh-trigger tasks go to the project's xhigh general worker with the same brief.
 - Never the cheap tier (Haiku) for implementation: it routinely takes 2-3× the turns on multi-step work and costs more overall.
 
 ## Effort (effort-pinned agent types)
