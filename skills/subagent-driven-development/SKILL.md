@@ -15,11 +15,11 @@ Execute a plan by dispatching a fresh subagent per task, with a two-stage review
 - Same plan, but a separate/parallel session → superpowers:executing-plans.
 - No plan, or tightly coupled tasks → manual execution or brainstorm first.
 
-**Review checkpoints override the per-task loop.** If the project's CLAUDE.md or the plan declares review checkpoints, those govern: batched review across grouped tasks is correct and is not "skipping reviews." Every task still gets reviewed — checkpoints decide when and how grouped.
+**Review checkpoints override the per-task loop.** If the project's CLAUDE.md or the plan declares review checkpoints, those govern. Every task still gets reviewed — checkpoints decide when and how grouped.
 
 ## Setup
 
-- Work in place in the current checkout. Never implement on main/master without your human partner's consent.
+- Work in place in the current checkout, on the current branch.
 - Each plan owns a workspace: run this skill's `scripts/sdd-workspace PLAN_FILE` — it prints the plan's git-ignored directory (`<repo-root>/.superpowers/sdd/<plan-basename>/`), home to every artifact for THIS plan: ledger, briefs, reports, review packages. Another plan's directory is never yours to read or write.
 - **The ledger (`<workspace>/progress.md`) is your recovery map** — conversation memory does not survive compaction; after one, trust the ledger and `git log` over recollection. Check for it first: first line names your plan file → tasks with a `Task <N>: complete` line are DONE, resume at the first without one; a task whose last line is a fix round resumes at the next round. First line names another plan (or a stray ledger at the old flat path `.superpowers/sdd/progress.md`) → leave it, start your own with `# SDD ledger — plan: <plan file path>` as line 1. `git clean -fdx` destroys the workspace; recover from `git log`.
 - **The ledger records STATE, not reasoning.** One event, one line, in the forms this skill names (dispatch, fix round, complete, minor, parked, ruling, BLOCKED); only a parked ruling may run to three. Every decision taken on your human partner's behalf — a plan contradiction resolved from the header's recorded decisions, a tier correction, a breaker adjudication — is a `Task <N>: ruling — <what> — <why> — <cost if wrong>` line. No narration, praise, self-correction essays, or restated facts — every line is re-read every later turn. Process lessons go in your final report: the workspace is deleted at Finish.
@@ -72,7 +72,7 @@ Template: [implementer-prompt.md](implementer-prompt.md)
 
 ### 3. Review the task
 
-Per-task reviews are task-scoped gates; the broad review is at the end. Never skip one, never accept a report missing either verdict (spec compliance AND task quality); implementer self-review never replaces it.
+Per-task reviews are task-scoped gates; the broad review is at the end. Every task gets one review carrying both verdicts, spec compliance and task quality; implementer self-review is not one.
 
 - **Hand the reviewer its diff as a file:** `scripts/review-package PLAN_FILE BASE HEAD` (from this skill's directory) prints the unique path it wrote — commit list, stat summary, full `-U10` diff, one Read, nothing in your context. Without bash: `git log --oneline` + `git diff --stat` + `git diff -U10` for the range into one uniquely named file. BASE is the commit recorded before dispatch — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task. Never dispatch a reviewer without a diff file.
 - **Share the repo with anything else that commits? Scope the package** — `scripts/review-package PLAN_FILE BASE HEAD -- $(git show --name-only --format= <shas from the implementer's report>)`. Foreign commits land between yours whenever another session, agent or human works the checkout; `BASE..HEAD` sweeps them all in, sequential loop or not.
@@ -107,6 +107,8 @@ Everything else enters the loop. A round = one fix dispatch + one scoped re-revi
 - Real, nothing downstream builds on it → park the same way; ruling says real and deferred.
 - Real and load-bearing (a later task builds on it, or it reveals a plan defect) → STOP. `Task <N>: BLOCKED — <reason>`; report the finding, the plan text it collides with, and the fix history.
 
+A finding that looks wrong before round 5 stays open until the cap; every ruling is a ledger entry. An implementer that spawned its own reviewer is a defect to flag: the task review is the gate, and a worker-spawned reviewer is a duplicate seat on the same diff.
+
 ### 5. Complete the task
 
 Review clean, or every open finding parked with a ruling at the cap → ledger, in the same message as your other bookkeeping:
@@ -115,8 +117,6 @@ Review clean, or every open finding parked with a ruling at the cap → ledger, 
 - `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after a tripped breaker
 
 Then TaskUpdate completed, and in the same call shrink the description to its **Goal:** line plus `Complete — see ledger.` (the harness re-injects every description on periodic reminders). Then sync `<plan-path>.tasks.json`: `"status"` → `"completed"`, `"lastUpdated"` → current ISO timestamp — without it a new session sees the task as pending.
-
-Never move on while Critical/Important issues are neither fixed nor parked-with-ruling at the cap.
 
 ## Final Review
 
@@ -129,16 +129,3 @@ Findings → **ONE fix subagent with the complete list**, then exactly one scope
 Before deleting anything, collect every ledger `ruling` and `parked` line — preflight rulings, tier corrections, parked findings, breaker adjudications — into your final message under **"Rulings I made"**, in order, each with its cost if wrong. Exhaustive: the ledger holds it, the list holds it. It is the only place your decisions on your partner's behalf reach them.
 
 Final review clean and fixes merged → `rm -rf <workspace>`; git history is the record. Sibling directories belong to other plans.
-
-## Common Rationalizations
-
-| Excuse | Reality |
-|--------|---------|
-| "Close enough on spec compliance" | Spec gaps = not done. Fix, or hit the cap and adjudicate — the only exits. |
-| "One more round will converge" | Past the cap the failure is structural. Adjudicate and route. |
-| "The reviewer will just find something new anyway" | Scoped re-reviews cannot wander. Findings on untouched code go to the ledger, not the loop. |
-| "This finding is obviously wrong, I'll drop it" | Adjudicate only at the cap; every ruling is a ledger entry. Silent discards are forbidden. |
-| "The fix was small, skip the re-review" | Unreviewed fixes are how regressions land. Every round ends with a scoped re-review. |
-| "This looks harder than `mechanical`, I'll send the top tier" | The plan writer tiered it with the task in hand. Decision left open → ledger a tier ruling; otherwise dispatch at the tier. |
-| "I'll resume it, it already has the context" | The report file is the context. A resume replays the whole transcript every turn; the agent holding the most context is the most expensive one to add a turn to. |
-| "The implementer spawned its own reviewer — free assurance" | A duplicate seat on the same diff; the task review is the gate. A worker-spawned reviewer is a defect to flag. |

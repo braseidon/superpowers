@@ -95,7 +95,7 @@ After all tasks complete and verified, the work is committed and the plan is don
 - Don't skip verifications
 - Reference skills when plan says to
 - Stop when blocked, don't guess
-- Never start implementation on main/master branch without explicit user consent
+- Work on the current branch
 
 ## Integration
 
