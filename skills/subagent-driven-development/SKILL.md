@@ -15,7 +15,7 @@ Execute a plan by dispatching a fresh subagent per task, with a two-stage review
 - Same plan, but a separate/parallel session → superpowers:executing-plans.
 - No plan, or tightly coupled tasks → manual execution or brainstorm first.
 
-**Review checkpoints override the per-task loop.** If the project's CLAUDE.md or the plan declares review checkpoints, those govern. Every task still gets reviewed — checkpoints decide when and how grouped.
+**Review checkpoints override the per-task loop.** If the project's CLAUDE.md or the plan declares review checkpoints, those govern: a task not closing its checkpoint ledgers landed and skips its own reviewer dispatch; every task still gets reviewed, checkpoints decide when and how grouped. A task added mid-execution is assigned to a checkpoint the moment it is added — `Task <N>: ruling — checkpoint CP<k> — <why>` — never left to default to 1:1.
 
 ## Setup
 
@@ -29,7 +29,7 @@ Execute a plan by dispatching a fresh subagent per task, with a two-stage review
 ## Dispatching with Metadata
 
 1. Read the task's description via TaskGet — metadata is a `json:metadata` fence at the end.
-2. Map its fields (files, acceptanceCriteria, verifyCommand, modelTier) to the implementer prompt sections. The implementer receives ALL structured data — never make it parse prose.
+2. Map its fields (files, acceptanceCriteria, verifyCommand, modelTier) to the implementer prompt sections; read `checkpoint` for the review-timing decision below (§2) — it governs your dispatch loop, never the implementer prompt. The implementer receives ALL structured data — never make it parse prose.
 
 ## Model Selection
 
@@ -63,7 +63,8 @@ Template: [implementer-prompt.md](implementer-prompt.md)
 
 ### 2. Handle the report
 
-- **DONE:** generate the review package (§3) after the report lands, then dispatch the task reviewer.
+- **DONE, checkpoint task that doesn't close its checkpoint:** the report's mutation proof (the guarded behavior broken, observed red, reverted) stands in for the per-task review — demand it before ledgering; no proof, no ledger line. Ledger `Task <N>: landed (commits <a7>..<b7>) — awaiting CP<k>` and dispatch the next frontier; no reviewer yet.
+- **DONE, task closes its checkpoint (last task in the group, or the task carries no checkpoint):** generate the review package (§3) scoped to every commit landed since the checkpoint opened, then dispatch the task reviewer once for the whole batch.
 - **DONE_WITH_CONCERNS:** read the concerns. Correctness or scope → address before review, by resume under the resume gate or a fresh same-tier dispatch carrying your ruling and the report-file path; observations ("this file is getting large") → note and proceed.
 - **NEEDS_CONTEXT:** provide the missing context and re-dispatch.
 - **BLOCKED:** context problem → more context, same model; reasoning problem → fresh dispatch on a more capable model (one bump, Model Selection); too large → split; plan wrong → escalate to the human.
@@ -72,7 +73,7 @@ Template: [implementer-prompt.md](implementer-prompt.md)
 
 ### 3. Review the task
 
-Per-task reviews are task-scoped gates; the broad review is at the end. Every task gets one review carrying both verdicts, spec compliance and task quality; implementer self-review is not one.
+Per-task reviews are task-scoped gates; the broad review is at the end. Every task gets one review carrying both verdicts, spec compliance and task quality, at the point §2 dispatches it (per-task, or batched at its checkpoint's close); implementer self-review is not one, and never substitutes except as §2's mutation-proof stand-in for a task still awaiting its checkpoint.
 
 - **Hand the reviewer its diff as a file:** `scripts/review-package PLAN_FILE BASE HEAD` (from this skill's directory) prints the unique path it wrote — commit list, stat summary, full `-U10` diff, one Read, nothing in your context. Without bash: `git log --oneline` + `git diff --stat` + `git diff -U10` for the range into one uniquely named file. BASE is the commit recorded before dispatch — never `HEAD~1`, which silently drops all but the last commit of a multi-commit task. Never dispatch a reviewer without a diff file.
 - **Share the repo with anything else that commits? Scope the package** — `scripts/review-package PLAN_FILE BASE HEAD -- $(git show --name-only --format= <shas from the implementer's report>)`. Foreign commits land between yours whenever another session, agent or human works the checkout; `BASE..HEAD` sweeps them all in, sequential loop or not.
@@ -115,6 +116,7 @@ Review clean, or every open finding parked with a ruling at the cap → ledger, 
 
 - `Task <N>: complete (commits <base7>..<head7>, review clean)`
 - `Task <N>: complete (commits <base7>..<head7>, <K> parked)` after a tripped breaker
+- Checkpoint close: `CP<k>: complete (tasks <N1>, <N2>, …, review clean)` — replaces each task's own `landed — awaiting CP<k>` line as the closing record for the batch.
 
 Then TaskUpdate completed, and in the same call shrink the description to its **Goal:** line plus `Complete — see ledger.` (the harness re-injects every description on periodic reminders). Then sync `<plan-path>.tasks.json`: `"status"` → `"completed"`, `"lastUpdated"` → current ISO timestamp — without it a new session sees the task as pending.
 
